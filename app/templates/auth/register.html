@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7 col-lg-6">
+
+    <div class="card shadow-sm border-0 mt-3">
+      <div class="card-header bg-danger text-white text-center py-3">
+        <h4 class="mb-0">
+          <i class="fa-solid fa-user-plus me-2"></i>Donor Registration
+        </h4>
+      </div>
+
+      <div class="card-body p-4">
+        <form method="POST" action="{{ url_for('auth.register') }}" novalidate>
+          {{ form.hidden_tag() }}
+
+          <!-- Full Name -->
+          <div class="mb-3">
+            {{ form.full_name.label(class="form-label fw-semibold") }}
+            {{ form.full_name(class="form-control" + (" is-invalid" if form.full_name.errors else ""), placeholder="Enter your full name") }}
+            {% for error in form.full_name.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <!-- Age + Gender row -->
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              {{ form.age.label(class="form-label fw-semibold") }}
+              {{ form.age(class="form-control" + (" is-invalid" if form.age.errors else ""), placeholder="18–65") }}
+              {% for error in form.age.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-6 mb-3">
+              {{ form.gender.label(class="form-label fw-semibold") }}
+              {{ form.gender(class="form-select" + (" is-invalid" if form.gender.errors else "")) }}
+              {% for error in form.gender.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Phone -->
+          <div class="mb-3">
+            {{ form.phone.label(class="form-label fw-semibold") }}
+            {{ form.phone(class="form-control" + (" is-invalid" if form.phone.errors else ""), placeholder="10-digit mobile number") }}
+            {% for error in form.phone.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <!-- Email -->
+          <div class="mb-3">
+            {{ form.email.label(class="form-label fw-semibold") }}
+            {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), placeholder="example@email.com") }}
+            {% for error in form.email.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <!-- City + Blood Group row -->
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              {{ form.city.label(class="form-label fw-semibold") }}
+              {{ form.city(class="form-control" + (" is-invalid" if form.city.errors else ""), placeholder="Your city") }}
+              {% for error in form.city.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-6 mb-3">
+              {{ form.blood_group.label(class="form-label fw-semibold") }}
+              {{ form.blood_group(class="form-select" + (" is-invalid" if form.blood_group.errors else "")) }}
+              {% for error in form.blood_group.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Password -->
+          <div class="mb-3">
+            {{ form.password.label(class="form-label fw-semibold") }}
+            {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="Minimum 6 characters") }}
+            {% for error in form.password.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <!-- Confirm Password -->
+          <div class="mb-4">
+            {{ form.confirm.label(class="form-label fw-semibold") }}
+            {{ form.confirm(class="form-control" + (" is-invalid" if form.confirm.errors else ""), placeholder="Repeat your password") }}
+            {% for error in form.confirm.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <!-- Submit -->
+          {{ form.submit(class="btn btn-danger w-100 py-2 fw-semibold") }}
+        </form>
+      </div>
+
+      <div class="card-footer text-center text-muted py-3">
+        Already registered?
+        <a href="{{ url_for('auth.login') }}" class="text-danger fw-semibold">Login here</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

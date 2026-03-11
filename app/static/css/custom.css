@@ -1,0 +1,38 @@
+/* ── BDMS Custom Styles ── */
+
+/* Eligibility Badges */
+.badge-eligible {
+  background-color: #198754;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.badge-ineligible {
+  background-color: #dc3545;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Card hover effect */
+.card:hover {
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+/* Navbar brand */
+.navbar-brand {
+  font-size: 1.4rem;
+  letter-spacing: 1px;
+}
+
+/* Dashboard stat cards */
+.stat-card {
+  border-left: 4px solid #dc3545;
+  border-radius: 8px;
+}

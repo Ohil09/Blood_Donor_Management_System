@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5 col-lg-4">
+
+    <div class="card shadow-sm border-0 mt-5">
+      <div class="card-header bg-danger text-white text-center py-3">
+        <h4 class="mb-0">
+          <i class="fa-solid fa-right-to-bracket me-2"></i>Login
+        </h4>
+      </div>
+
+      <div class="card-body p-4">
+        <form method="POST" action="{{ url_for('auth.login') }}" novalidate>
+          {{ form.hidden_tag() }}
+
+          <!-- Login ID -->
+          <div class="mb-3">
+            {{ form.login_id.label(class="form-label fw-semibold") }}
+            {{ form.login_id(class="form-control" + (" is-invalid" if form.login_id.errors else ""), placeholder="Your Donor ID e.g. BDMS-AB1234") }}
+            {% for error in form.login_id.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+            <div class="form-text">Use your Donor ID or registered email.</div>
+          </div>
+
+          <!-- Password -->
+          <div class="mb-4">
+            {{ form.password.label(class="form-label fw-semibold") }}
+            {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="Your password") }}
+            {% for error in form.password.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          {{ form.submit(class="btn btn-danger w-100 py-2 fw-semibold") }}
+        </form>
+      </div>
+
+      <div class="card-footer text-center text-muted py-3">
+        New donor?
+        <a href="{{ url_for('auth.register') }}" class="text-danger fw-semibold">Register here</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
