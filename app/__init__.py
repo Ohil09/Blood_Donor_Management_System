@@ -24,8 +24,11 @@ def create_app(config_name="development"):
 
     # ── Register Blueprints ──────────────────────────────
     # (Uncomment each one as you build them)
+    # Blueprints
     from app.routes.auth import auth_bp
+    from app.routes.donor import donor_bp
     app.register_blueprint(auth_bp)
+    app.register_blueprint(donor_bp)
 
     # from app.routes.donor      import donor_bp
     # from app.routes.admin      import admin_bp

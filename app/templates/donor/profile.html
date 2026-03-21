@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-7">
+
+      <h3 class="mb-4">
+        <i class="fa-solid fa-user me-2"></i>My Profile
+      </h3>
+
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+
+          <!-- Read-Only Profile Display -->
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label text-muted small">Full Name</label>
+              <p class="form-control-static fw-semibold">{{ donor.full_name }}</p>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-muted small">Donor ID</label>
+              <p class="form-control-static fw-semibold">{{ donor.donor_id }}</p>
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label text-muted small">Age</label>
+              <p class="form-control-static">{{ donor.age }} years</p>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-muted small">Gender</label>
+              <p class="form-control-static">{{ donor.gender }}</p>
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label text-muted small">Blood Group</label>
+              <p class="form-control-static">
+                <span class="badge bg-danger" style="font-size: 1.1rem;">{{ donor.blood_group }}</span>
+              </p>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-muted small">Phone Number</label>
+              <p class="form-control-static">{{ donor.phone }}</p>
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label text-muted small">Email Address</label>
+              <p class="form-control-static">{{ donor.email }}</p>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-muted small">City</label>
+              <p class="form-control-static">{{ donor.city }}</p>
+            </div>
+          </div>
+
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <label class="form-label text-muted small">Joined</label>
+              <p class="form-control-static">{{ donor.created_at.strftime("%d %b %Y") }}</p>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-muted small">Account Status</label>
+              <p class="form-control-static">
+                {% if donor.is_active %}
+                  <span class="badge bg-success">Active</span>
+                {% else %}
+                  <span class="badge bg-danger">Inactive</span>
+                {% endif %}
+              </p>
+            </div>
+          </div>
+
+          <hr>
+
+          <!-- Info Box -->
+          <div class="alert alert-info small">
+            <i class="fa-solid fa-info-circle me-2"></i>
+            <strong>Note:</strong> Profile details are managed by admin. Contact your hospital admin to update any information.
+          </div>
+
+          <!-- Back Button -->
+          <a href="{{ url_for('donor.dashboard') }}" class="btn btn-outline-danger w-100">
+            <i class="fa-solid fa-arrow-left me-1"></i>Back to Dashboard
+          </a>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

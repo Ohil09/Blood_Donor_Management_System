@@ -97,7 +97,7 @@ def logout():
 # ── Helper ───────────────────────────────────────────────────
 def _redirect_by_role(role):
     if role == "donor":
-        return redirect(url_for("auth.login"))   # temp until donor bp exists
+        return redirect(url_for("donor.dashboard"))   # temp until donor bp exists
     elif role == "hospital_admin":
         return redirect(url_for("auth.login"))   # temp until admin bp exists
     elif role == "superadmin":
