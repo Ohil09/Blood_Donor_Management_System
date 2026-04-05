@@ -103,7 +103,6 @@ def logout():
     flash("You have been logged out.", "info")
     return redirect(url_for("auth.login"))
 
-
 # ── Helper ───────────────────────────────────────────────────
 def _redirect_by_role(role):
     if role == "donor":
@@ -111,5 +110,8 @@ def _redirect_by_role(role):
     elif role in ("admin", "superadmin"):
         return redirect(url_for("admin.dashboard"))
     elif role == "hospital_admin":
-        return redirect(url_for("auth.login"))   # placeholder until hospital_admin bp exists
+        # Placeholder: hospital_admin dashboard not yet implemented.
+        flash("Hospital admin portal is coming soon. Please contact the system administrator.", "info")
+        return redirect(url_for("auth.login"))
+    flash("Your account role is not recognised. Please contact support.", "warning")
     return redirect(url_for("auth.login"))
