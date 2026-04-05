@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-5">
+
+  <!-- ── Header ── -->
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <h2 class="mb-1">
+        <i class="fa-solid fa-chart-line me-2"></i>Admin Dashboard
+      </h2>
+      <p class="text-muted">Hospital Blood Management System</p>
+    </div>
+  </div>
+
+  <!-- ── Low Stock Alert ── -->
+  {% if low_stock_alert %}
+    <div class="row mb-4">
+      <div class="col-md-12">
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+          <i class="fa-solid fa-exclamation-triangle me-2"></i>
+          <strong>Warning:</strong> {{ low_stock_alert }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- ── Stats Cards ── -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm stat-card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <p class="text-muted mb-1">Total Blood Units</p>
+              <h3 class="mb-0">{{ inventory.get_total_stock() }}</h3>
+            </div>
+            <div style="font-size: 2.5rem; color: #dc3545; opacity: 0.2;">
+              <i class="fa-solid fa-droplet"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm stat-card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <p class="text-muted mb-1">Blood Groups</p>
+              <h3 class="mb-0">{{ inventory.BLOOD_GROUPS|length }}</h3>
+            </div>
+            <div style="font-size: 2.5rem; color: #dc3545; opacity: 0.2;">
+              <i class="fa-solid fa-flask"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm stat-card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <p class="text-muted mb-1">Registered Donors</p>
+              <h3 class="mb-0">{{ donor_count }}</h3>
+            </div>
+            <div style="font-size: 2.5rem; color: #dc3545; opacity: 0.2;">
+              <i class="fa-solid fa-users"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm stat-card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <p class="text-muted mb-1">Low Stock Items</p>
+              <h3 class="mb-0">{{ inventory.get_low_stock_groups()|length }}</h3>
+            </div>
+            <div style="font-size: 2.5rem; color: #ffc107; opacity: 0.2;">
+              <i class="fa-solid fa-exclamation"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Inventory Overview ── -->
+  <div class="row mb-4">
+    <div class="col-md-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light border-bottom">
+          <h5 class="mb-0">
+            <i class="fa-solid fa-vials me-2"></i>Current Blood Inventory
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead class="table-danger">
+                <tr>
+                  <th>Blood Group</th>
+                  <th>Units Available</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for bg in inventory.BLOOD_GROUPS %}
+                  <tr>
+                    <td>
+                      <span class="badge bg-danger">{{ bg }}</span>
+                    </td>
+                    <td>
+                      <strong>{{ inventory.get_stock(bg) }} units</strong>
+                    </td>
+                    <td>
+                      {% if inventory.is_low_stock(bg) %}
+                        <span class="badge bg-warning">
+                          <i class="fa-solid fa-exclamation-circle me-1"></i>Low Stock
+                        </span>
+                      {% else %}
+                        <span class="badge bg-success">
+                          <i class="fa-solid fa-check-circle me-1"></i>Adequate
+                        </span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Quick Actions ── -->
+  <div class="row mb-4">
+    <div class="col-md-12">
+      <h5 class="mb-3">Quick Actions</h5>
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="{{ url_for('admin.inventory') }}" class="btn btn-danger btn-sm">
+          <i class="fa-solid fa-box me-1"></i>Manage Inventory
+        </a>
+        <a href="{{ url_for('admin.donors') }}" class="btn btn-outline-danger btn-sm">
+          <i class="fa-solid fa-users me-1"></i>View All Donors
+        </a>
+        <a href="{{ url_for('admin.search_donors') }}" class="btn btn-outline-danger btn-sm">
+          <i class="fa-solid fa-magnifying-glass me-1"></i>Search Donors
+        </a>
+
+        <a href="{{ url_for('admin.unassigned_donors') }}" class="btn btn-warning btn-sm">
+            <i class="fa-solid fa-hourglass-end me-1"></i>Assign Donors
+        </a>
+
+        <a href="#" class="btn btn-outline-danger btn-sm disabled">
+          <i class="fa-solid fa-bell me-1"></i>Blood Requests (Coming Soon)
+        </a>
+
+        
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Recent Donations ── -->
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light border-bottom">
+          <h5 class="mb-0">
+            <i class="fa-solid fa-history me-2"></i>Recent Donations
+          </h5>
+        </div>
+        <div class="card-body">
+          {% if recent_donations %}
+            <div class="table-responsive">
+              <table class="table table-sm table-hover">
+                <thead class="table-danger">
+                  <tr>
+                    <th>Donor</th>
+                    <th>Blood Group</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for donation in recent_donations %}
+                    <tr>
+                      <td>{{ donation.donor_name or "N/A" }}</td>
+                      <td>
+                        <span class="badge bg-danger">{{ donation.blood_group }}</span>
+                      </td>
+                      <td>{{ donation.donation_date_display }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <p class="text-muted mb-0">
+              <i class="fa-solid fa-info-circle me-1"></i>No donations recorded yet.
+            </p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
