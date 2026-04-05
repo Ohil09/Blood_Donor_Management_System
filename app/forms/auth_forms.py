@@ -5,23 +5,10 @@ from wtforms import (
 )
 from wtforms.validators import (
     DataRequired, Email, Length,
-    EqualTo, NumberRange
+    EqualTo, NumberRange, Regexp
 )
+from app.constants import BLOOD_GROUP_CHOICES
 
-# BLOOD_GROUPS = [
-#     ("", "-- Select Blood Group --"),
-#     ("A+", "A+"), ("A-", "A-"),
-#     ("B+", "B+"), ("B-", "B-"),
-#     ("AB+", "AB+"), ("AB-", "AB-"),
-#     ("O+", "O+"), ("O-", "O-"),
-# ]
-
-# GENDER_CHOICES = [
-#     ("", "-- Select Gender --"),
-#     ("Male", "Male"),
-#     ("Female", "Female"),
-#     ("Other", "Other"),
-# ]
 
 class RegistrationForm(FlaskForm):
     full_name = StringField("Full Name",
@@ -32,24 +19,26 @@ class RegistrationForm(FlaskForm):
                     choices=[("Male", "Male"), ("Female", "Female"), ("Other", "Other")],
                     validators=[DataRequired()])
     blood_group = SelectField("Blood Group",
-                    choices=[
-                        ("O+", "O+"), ("O-", "O-"),
-                        ("A+", "A+"), ("A-", "A-"),
-                        ("B+", "B+"), ("B-", "B-"),
-                        ("AB+", "AB+"), ("AB-", "AB-"),
-                    ],
+                    choices=BLOOD_GROUP_CHOICES,
                     validators=[DataRequired()])
     city = StringField("City",
                     validators=[DataRequired(), Length(min=2, max=50)])
     email = StringField("Email",
                     validators=[DataRequired(), Email()])
     phone = StringField("Phone Number",
-                    validators=[DataRequired(), Length(min=10, max=15)])
+                    validators=[
+                        DataRequired(),
+                        Length(min=10, max=15),
+                        Regexp(r"^\+?[0-9]{10,15}$",
+                               message="Phone number must contain 10–15 digits (optional leading +).")
+                    ])
     password = PasswordField("Password",
-                    validators=[DataRequired(), Length(min=6)])
+                    validators=[DataRequired(), Length(min=8,
+                        message="Password must be at least 8 characters.")])
     confirm = PasswordField("Confirm Password",
                     validators=[EqualTo("password")])
     submit = SubmitField("Register as Donor")
+
 
 class LoginForm(FlaskForm):
     login_id  = StringField("Donor ID / Admin ID",

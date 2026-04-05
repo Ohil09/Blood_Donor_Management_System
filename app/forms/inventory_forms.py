@@ -1,21 +1,14 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, IntegerField, SelectField, SubmitField
-from wtforms.validators import DataRequired, NumberRange, ValidationError
+from wtforms import StringField, IntegerField, SelectField, SubmitField, BooleanField
+from wtforms.validators import DataRequired, NumberRange
+from app.constants import BLOOD_GROUP_CHOICES
+
 
 class AddStockForm(FlaskForm):
     """Form to add blood stock"""
     blood_group = SelectField(
         "Blood Group",
-        choices=[
-            ("O+", "O+"),
-            ("O-", "O-"),
-            ("A+", "A+"),
-            ("A-", "A-"),
-            ("B+", "B+"),
-            ("B-", "B-"),
-            ("AB+", "AB+"),
-            ("AB-", "AB-"),
-        ],
+        choices=BLOOD_GROUP_CHOICES,
         validators=[DataRequired()]
     )
     quantity = IntegerField(
@@ -32,16 +25,7 @@ class DepleteStockForm(FlaskForm):
     """Form to deplete blood stock (after donation/request fulfilled)"""
     blood_group = SelectField(
         "Blood Group",
-        choices=[
-            ("O+", "O+"),
-            ("O-", "O-"),
-            ("A+", "A+"),
-            ("A-", "A-"),
-            ("B+", "B+"),
-            ("B-", "B-"),
-            ("AB+", "AB+"),
-            ("AB-", "AB-"),
-        ],
+        choices=BLOOD_GROUP_CHOICES,
         validators=[DataRequired()]
     )
     quantity = IntegerField(
@@ -54,22 +38,12 @@ class DepleteStockForm(FlaskForm):
     submit = SubmitField("Deplete Stock")
 
 
-class SearchInventoryForm(FlaskForm):
-    """Form to search donors by blood group and eligibility"""
+class SearchDonorForm(FlaskForm):
+    """Form to search donors by blood group, city, and eligibility"""
     blood_group = SelectField(
         "Blood Group",
-        choices=[
-            ("", "-- All Blood Groups --"),
-            ("O+", "O+"),
-            ("O-", "O-"),
-            ("A+", "A+"),
-            ("A-", "A-"),
-            ("B+", "B+"),
-            ("B-", "B-"),
-            ("AB+", "AB+"),
-            ("AB-", "AB-"),
-        ]
+        choices=[("", "-- All Blood Groups --")] + BLOOD_GROUP_CHOICES
     )
     city = StringField("City (optional)")
-    only_eligible = StringField("Only Eligible Donors", default="on")
+    only_eligible = BooleanField("Only Eligible Donors", default=True)
     submit = SubmitField("Search")

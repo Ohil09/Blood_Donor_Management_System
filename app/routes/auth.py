@@ -15,35 +15,30 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 def register():
     if current_user.is_authenticated:
         return redirect(url_for("auth.login"))
-    
+
     form = RegistrationForm()
-    
+
     if form.validate_on_submit():
+        email = form.email.data.strip().lower()
+
         # Check duplicate email
-        existing_email = db.users.find_one({"email": form.email.data})
-        if existing_email:
+        if db.users.find_one({"email": email}):
             flash("Email already registered.", "danger")
             return redirect(url_for("auth.register"))
-        
+
         # Check duplicate phone
-        existing_phone = db.users.find_one({"phone": form.phone.data})
-        if existing_phone:
+        if db.users.find_one({"phone": form.phone.data}):
             flash("Phone number already registered.", "danger")
             return redirect(url_for("auth.register"))
-        
-        # Generate donor ID
-        from app.services.donor_id_service import generate_donor_id
+
         donor_id = generate_donor_id()
-        
-        # Hash password
-        from werkzeug.security import generate_password_hash
         password_hash = generate_password_hash(form.password.data)
-        
-        # Insert donor WITHOUT hospital_id
+
+        # Insert donor WITHOUT hospital_id — admin assigns later
         db.users.insert_one({
             "donor_id": donor_id,
             "full_name": form.full_name.data,
-            "email": form.email.data,
+            "email": email,
             "phone": form.phone.data,
             "age": form.age.data,
             "gender": form.gender.data,
@@ -51,15 +46,20 @@ def register():
             "city": form.city.data,
             "password_hash": password_hash,
             "role": "donor",
-            "hospital_id": None,  # ✅ NOT ASSIGNED YET
+            "hospital_id": None,
+            "hospital_name": None,
             "created_at": datetime.now(timezone.utc),
             "is_active": True,
             "last_donation_date": None,
         })
-        
-        flash(f"✅ Registration successful! Your Donor ID is {donor_id}. Please wait for admin approval to access full features.", "success")
+
+        flash(
+            f"✅ Registration successful! Your Donor ID is {donor_id}. "
+            "Please wait for admin approval to access full features.",
+            "success",
+        )
         return redirect(url_for("auth.login"))
-    
+
     return render_template("auth/register.html", form=form)
 
 
@@ -75,11 +75,11 @@ def login():
         login_id = form.login_id.data.strip()
         password = form.password.data
 
-        # Find user by donor_id OR email
+        # Find user by donor_id OR email (email lookup is case-insensitive)
         doc = db.users.find_one({
             "$or": [
                 {"donor_id": login_id},
-                {"email":    login_id.lower()}
+                {"email": login_id.lower()},
             ]
         })
 
@@ -108,10 +108,8 @@ def logout():
 def _redirect_by_role(role):
     if role == "donor":
         return redirect(url_for("donor.dashboard"))
-    elif role in ["admin", "superadmin"]:
-        return redirect(url_for("admin.dashboard"))   # temp until donor bp exists
+    elif role in ("admin", "superadmin"):
+        return redirect(url_for("admin.dashboard"))
     elif role == "hospital_admin":
-        return redirect(url_for("auth.login"))   # temp until admin bp exists
-    elif role == "superadmin":
-        return redirect(url_for("auth.login"))   # temp until superadmin bp exists
+        return redirect(url_for("auth.login"))   # placeholder until hospital_admin bp exists
     return redirect(url_for("auth.login"))

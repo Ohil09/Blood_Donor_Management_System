@@ -17,30 +17,25 @@ def create_app(config_name="development"):
     client = MongoClient(app.config["MONGO_URI"])
     db = client[app.config["MONGO_DB_NAME"]]
 
+    # ── Ensure indexes exist (idempotent on repeated startup) ───
+    db.users.create_index("email")
+    db.users.create_index("donor_id")
+    db.users.create_index("phone")
+    db.users.create_index([("hospital_id", 1), ("role", 1)])
+    db.inventory.create_index("hospital_id")
+    db.donations.create_index([("donor_id", 1), ("donation_date", -1)])
+
     # ── Initialize Extensions ────────────────────────────
     login_manager.init_app(app)
     mail.init_app(app)
     csrf.init_app(app)
 
     # ── Register Blueprints ──────────────────────────────
-    # (Uncomment each one as you build them)
-    # Blueprints
-    # Blueprints
-
     from app.routes.auth import auth_bp
     from app.routes.donor import donor_bp
     from app.routes.admin import admin_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(donor_bp)
     app.register_blueprint(admin_bp)
-
-    # from app.routes.donor      import donor_bp
-    # from app.routes.admin      import admin_bp
-    # from app.routes.superadmin import superadmin_bp
-    # from app.routes.api        import api_bp
-    # app.register_blueprint(donor_bp)
-    # app.register_blueprint(admin_bp)
-    # app.register_blueprint(superadmin_bp)
-    # app.register_blueprint(api_bp)
 
     return app
