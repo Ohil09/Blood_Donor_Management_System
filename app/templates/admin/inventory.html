@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}Manage Inventory{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-5">
+
+  <!-- ── Header ── -->
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <h3 class="mb-1">
+        <i class="fa-solid fa-box me-2"></i>Blood Inventory Management
+      </h3>
+      <p class="text-muted">Last updated: {{ inventory.last_updated.strftime("%d %b %Y, %I:%M %p") }}</p>
+    </div>
+    <div class="col-md-4 text-end">
+      <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-danger btn-sm">
+        <i class="fa-solid fa-arrow-left me-1"></i>Back to Dashboard
+      </a>
+    </div>
+  </div>
+
+  <!-- ── Add & Deplete Stock Section ── -->
+  <div class="row mb-4">
+    <!-- Add Stock Form -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0">
+            <i class="fa-solid fa-plus me-2"></i>Add Blood Stock
+          </h5>
+        </div>
+        <div class="card-body">
+          <form method="POST" action="{{ url_for('admin.add_stock') }}">
+            {{ add_form.hidden_tag() }}
+
+            <div class="mb-3">
+              <label class="form-label">Blood Group</label>
+              {{ add_form.blood_group(class="form-select") }}
+              {% if add_form.blood_group.errors %}
+                <small class="text-danger d-block mt-1">
+                  {% for error in add_form.blood_group.errors %}
+                    {{ error }}
+                  {% endfor %}
+                </small>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Quantity (units)</label>
+              {{ add_form.quantity(class="form-control", placeholder="e.g., 5", type="number") }}
+              {% if add_form.quantity.errors %}
+                <small class="text-danger d-block mt-1">
+                  {% for error in add_form.quantity.errors %}
+                    {{ error }}
+                  {% endfor %}
+                </small>
+              {% endif %}
+            </div>
+
+            {{ add_form.submit(class="btn btn-success w-100") }}
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Deplete Stock Form -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-danger text-white">
+          <h5 class="mb-0">
+            <i class="fa-solid fa-minus me-2"></i>Deplete Blood Stock
+          </h5>
+        </div>
+        <div class="card-body">
+          <form method="POST" action="{{ url_for('admin.deplete_stock') }}">
+            {{ deplete_form.hidden_tag() }}
+
+            <div class="mb-3">
+              <label class="form-label">Blood Group</label>
+              {{ deplete_form.blood_group(class="form-select") }}
+              {% if deplete_form.blood_group.errors %}
+                <small class="text-danger d-block mt-1">
+                  {% for error in deplete_form.blood_group.errors %}
+                    {{ error }}
+                  {% endfor %}
+                </small>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Quantity (units)</label>
+              {{ deplete_form.quantity(class="form-control", placeholder="e.g., 2", type="number") }}
+              {% if deplete_form.quantity.errors %}
+                <small class="text-danger d-block mt-1">
+                  {% for error in deplete_form.quantity.errors %}
+                    {{ error }}
+                  {% endfor %}
+                </small>
+              {% endif %}
+            </div>
+
+            {{ deplete_form.submit(class="btn btn-danger w-100") }}
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Current Inventory Table ── -->
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light border-bottom">
+          <h5 class="mb-0">
+            <i class="fa-solid fa-vials me-2"></i>Current Stock Levels
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead class="table-danger">
+                <tr>
+                  <th>Blood Group</th>
+                  <th>Units Available</th>
+                  <th>Status</th>
+                  <th>Last Updated</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for bg in inventory.BLOOD_GROUPS %}
+                  <tr>
+                    <td>
+                      <span class="badge bg-danger" style="font-size: 1.1rem; padding: 8px 12px;">
+                        {{ bg }}
+                      </span>
+                    </td>
+                    <td>
+                      <strong style="font-size: 1.2rem;">{{ inventory.get_stock(bg) }}</strong>
+                      <span class="text-muted">units</span>
+                    </td>
+                    <td>
+                      {% if inventory.is_low_stock(bg) %}
+                        <span class="badge bg-warning">
+                          <i class="fa-solid fa-exclamation-circle me-1"></i>LOW STOCK
+                        </span>
+                      {% else %}
+                        <span class="badge bg-success">
+                          <i class="fa-solid fa-check-circle me-1"></i>Adequate
+                        </span>
+                      {% endif %}
+                    </td>
+                    <td class="text-muted small">
+                      {{ inventory.last_updated.strftime("%d %b %Y") if inventory.last_updated else "N/A" }}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Total Summary -->
+          <div class="mt-4 pt-3 border-top">
+            <div class="row">
+              <div class="col-md-4">
+                <p class="text-muted mb-1">Total Blood Units</p>
+                <h4 class="mb-0">{{ inventory.get_total_stock() }} units</h4>
+              </div>
+              <div class="col-md-4">
+                <p class="text-muted mb-1">Low Stock Groups</p>
+                <h4 class="mb-0">
+                  {% if inventory.get_low_stock_groups() %}
+                    <span class="badge bg-warning">{{ inventory.get_low_stock_groups()|length }}</span>
+                  {% else %}
+                    <span class="badge bg-success">0</span>
+                  {% endif %}
+                </h4>
+              </div>
+              <div class="col-md-4">
+                <p class="text-muted mb-1">Threshold</p>
+                <h4 class="mb-0">{{ inventory.LOW_STOCK_THRESHOLD }} units</h4>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

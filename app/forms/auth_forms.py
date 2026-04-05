@@ -8,45 +8,48 @@ from wtforms.validators import (
     EqualTo, NumberRange
 )
 
-BLOOD_GROUPS = [
-    ("", "-- Select Blood Group --"),
-    ("A+", "A+"), ("A-", "A-"),
-    ("B+", "B+"), ("B-", "B-"),
-    ("AB+", "AB+"), ("AB-", "AB-"),
-    ("O+", "O+"), ("O-", "O-"),
-]
+# BLOOD_GROUPS = [
+#     ("", "-- Select Blood Group --"),
+#     ("A+", "A+"), ("A-", "A-"),
+#     ("B+", "B+"), ("B-", "B-"),
+#     ("AB+", "AB+"), ("AB-", "AB-"),
+#     ("O+", "O+"), ("O-", "O-"),
+# ]
 
-GENDER_CHOICES = [
-    ("", "-- Select Gender --"),
-    ("Male", "Male"),
-    ("Female", "Female"),
-    ("Other", "Other"),
-]
+# GENDER_CHOICES = [
+#     ("", "-- Select Gender --"),
+#     ("Male", "Male"),
+#     ("Female", "Female"),
+#     ("Other", "Other"),
+# ]
 
 class RegistrationForm(FlaskForm):
-    full_name   = StringField("Full Name",
+    full_name = StringField("Full Name",
                     validators=[DataRequired(), Length(min=2, max=100)])
-    age         = IntegerField("Age",
-                    validators=[DataRequired(), NumberRange(min=18, max=65,
-                    message="Donor age must be between 18 and 65.")])
-    gender      = SelectField("Gender",
-                    choices=GENDER_CHOICES, validators=[DataRequired()])
-    phone       = StringField("Phone Number",
-                    validators=[DataRequired(), Length(min=10, max=15)])
-    email       = StringField("Email Address",
-                    validators=[DataRequired(), Email()])
-    city        = StringField("City",
-                    validators=[DataRequired(), Length(min=2, max=100)])
+    age = IntegerField("Age",
+                    validators=[DataRequired(), NumberRange(min=18, max=65)])
+    gender = SelectField("Gender",
+                    choices=[("Male", "Male"), ("Female", "Female"), ("Other", "Other")],
+                    validators=[DataRequired()])
     blood_group = SelectField("Blood Group",
-                    choices=BLOOD_GROUPS, validators=[DataRequired()])
-    password    = PasswordField("Password",
-                    validators=[DataRequired(), Length(min=6,
-                    message="Password must be at least 6 characters.")])
-    confirm     = PasswordField("Confirm Password",
-                    validators=[DataRequired(),
-                    EqualTo("password", message="Passwords must match.")])
-    submit      = SubmitField("Register as Donor")
-
+                    choices=[
+                        ("O+", "O+"), ("O-", "O-"),
+                        ("A+", "A+"), ("A-", "A-"),
+                        ("B+", "B+"), ("B-", "B-"),
+                        ("AB+", "AB+"), ("AB-", "AB-"),
+                    ],
+                    validators=[DataRequired()])
+    city = StringField("City",
+                    validators=[DataRequired(), Length(min=2, max=50)])
+    email = StringField("Email",
+                    validators=[DataRequired(), Email()])
+    phone = StringField("Phone Number",
+                    validators=[DataRequired(), Length(min=10, max=15)])
+    password = PasswordField("Password",
+                    validators=[DataRequired(), Length(min=6)])
+    confirm = PasswordField("Confirm Password",
+                    validators=[EqualTo("password")])
+    submit = SubmitField("Register as Donor")
 
 class LoginForm(FlaskForm):
     login_id  = StringField("Donor ID / Admin ID",
