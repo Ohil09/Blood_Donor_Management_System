@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% block title %}Request {{ blood_request.request_id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-5">
+
+  <!-- Header -->
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <h3 class="mb-1">
+        <i class="fa-solid fa-file-medical me-2"></i>{{ blood_request.request_id }}
+      </h3>
+      <p class="text-muted mb-0">
+        Blood Request Detail &mdash;
+        <span class="badge {{ blood_request.status_badge_class }}">{{ blood_request.status | capitalize }}</span>
+      </p>
+    </div>
+    <div class="col-md-4 text-end">
+      <a href="{{ url_for('admin.requests_list') }}" class="btn btn-outline-danger btn-sm me-2">
+        <i class="fa-solid fa-arrow-left me-1"></i>All Requests
+      </a>
+      {% if blood_request.status == "approved" %}
+      <a href="{{ url_for('admin.request_match_donors', request_id=blood_request.id) }}" class="btn btn-primary btn-sm">
+        <i class="fa-solid fa-user-check me-1"></i>Match Donors
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+
+  <div class="row">
+    <!-- Left: request details -->
+    <div class="col-md-8">
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-light border-bottom">
+          <h5 class="mb-0"><i class="fa-solid fa-info-circle me-2"></i>Request Details</h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <p class="text-muted mb-1 small">Blood Group</p>
+              <span class="badge bg-danger fs-6 px-3">{{ blood_request.blood_group }}</span>
+            </div>
+            <div class="col-sm-6">
+              <p class="text-muted mb-1 small">Component Type</p>
+              <strong>{{ blood_request.component_label }}</strong>
+            </div>
+            <div class="col-sm-6">
+              <p class="text-muted mb-1 small">Units Required</p>
+              <strong>{{ blood_request.units_required }}</strong>
+            </div>
+            <div class="col-sm-6">
+              <p class="text-muted mb-1 small">Urgency</p>
+              <span class="badge {{ blood_request.urgency_badge_class }}">{{ blood_request.urgency_label }}</span>
+            </div>
+            <div class="col-sm-6">
+              <p class="text-muted mb-1 small">Required By Date</p>
+              <strong>{{ blood_request.required_by_date_display }}</strong>
+            </div>
+            <div class="col-sm-6">
+              <p class="text-muted mb-1 small">Patient Name</p>
+              <strong>{{ blood_request.patient_name or "—" }}</strong>
+            </div>
+            {% if blood_request.notes %}
+            <div class="col-12">
+              <p class="text-muted mb-1 small">Notes</p>
+              <p class="mb-0">{{ blood_request.notes }}</p>
+            </div>
+            {% endif %}
+            {% if blood_request.status == "fulfilled" %}
+            <div class="col-sm-6">
+              <p class="text-muted mb-1 small">Units Fulfilled</p>
+              <strong class="text-success">{{ blood_request.fulfilled_units }}</strong>
+            </div>
+            <div class="col-sm-6">
+              <p class="text-muted mb-1 small">Fulfilled At</p>
+              <strong>{{ blood_request.fulfilled_at.strftime("%d %b %Y") if blood_request.fulfilled_at else "—" }}</strong>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Audit Trail -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light border-bottom">
+          <h5 class="mb-0"><i class="fa-solid fa-clock-rotate-left me-2"></i>Audit Trail</h5>
+        </div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush">
+            {% for entry in blood_request.audit_trail | reverse %}
+            <li class="list-group-item">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <span class="badge bg-secondary me-2">{{ entry.status | capitalize }}</span>
+                  <span class="text-muted small">{{ entry.note }}</span>
+                </div>
+                <small class="text-muted">
+                  {{ entry.timestamp.strftime("%d %b %Y, %I:%M %p") if entry.timestamp else "" }}
+                </small>
+              </div>
+            </li>
+            {% else %}
+            <li class="list-group-item text-muted">No history available.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: actions -->
+    <div class="col-md-4">
+
+      <!-- Status Actions -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-light border-bottom">
+          <h5 class="mb-0"><i class="fa-solid fa-bolt me-2"></i>Actions</h5>
+        </div>
+        <div class="card-body">
+
+          {% if blood_request.status == "pending" %}
+            <!-- Approve -->
+            <form method="POST" action="{{ url_for('admin.request_approve', request_id=blood_request.id) }}" class="mb-2">
+              {{ fulfill_form.hidden_tag() }}
+              <button type="submit" class="btn btn-primary w-100"
+                onclick="return confirm('Approve this request?')">
+                <i class="fa-solid fa-check me-1"></i>Approve Request
+              </button>
+            </form>
+          {% endif %}
+
+          {% if blood_request.status == "approved" %}
+            <!-- Fulfill -->
+            <form method="POST" action="{{ url_for('admin.request_fulfill', request_id=blood_request.id) }}" class="mb-3">
+              {{ fulfill_form.hidden_tag() }}
+              <label class="form-label fw-semibold small">Units Provided</label>
+              {{ fulfill_form.units_provided(class="form-control form-control-sm mb-2", type="number", min="1", placeholder="e.g. 2") }}
+              {% for error in fulfill_form.units_provided.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+              {{ fulfill_form.submit(class="btn btn-success w-100") }}
+            </form>
+          {% endif %}
+
+          {% if blood_request.status in ("pending", "approved") %}
+            <!-- Reject -->
+            <form method="POST" action="{{ url_for('admin.request_reject', request_id=blood_request.id) }}" class="mb-2">
+              {{ reject_form.hidden_tag() }}
+              <label class="form-label fw-semibold small">Rejection Reason (optional)</label>
+              {{ reject_form.reason(class="form-control form-control-sm mb-2", rows="2", placeholder="Reason...") }}
+              <button type="submit" class="btn btn-danger w-100 btn-sm"
+                onclick="return confirm('Reject this request?')">
+                <i class="fa-solid fa-xmark me-1"></i>Reject
+              </button>
+            </form>
+
+            <!-- Cancel -->
+            <form method="POST" action="{{ url_for('admin.request_cancel', request_id=blood_request.id) }}">
+              {{ reject_form.hidden_tag() }}
+              <button type="submit" class="btn btn-outline-secondary w-100 btn-sm"
+                onclick="return confirm('Cancel this request?')">
+                <i class="fa-solid fa-ban me-1"></i>Cancel Request
+              </button>
+            </form>
+          {% endif %}
+
+          {% if blood_request.status in ("fulfilled", "rejected", "cancelled") %}
+            <p class="text-muted small text-center mb-0">
+              <i class="fa-solid fa-lock me-1"></i>This request is in a terminal state and cannot be changed.
+            </p>
+          {% endif %}
+
+        </div>
+      </div>
+
+      <!-- Match Donors shortcut -->
+      {% if blood_request.status == "approved" %}
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <i class="fa-solid fa-user-check fa-2x text-primary mb-2"></i>
+          <p class="small text-muted mb-2">Find eligible donors for this request</p>
+          <a href="{{ url_for('admin.request_match_donors', request_id=blood_request.id) }}"
+            class="btn btn-primary btn-sm w-100">
+            <i class="fa-solid fa-magnifying-glass me-1"></i>Match Donors
+          </a>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

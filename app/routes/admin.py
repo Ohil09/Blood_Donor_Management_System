@@ -2,8 +2,16 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from app import db
 from app.models.inventory import Inventory
+from app.models.blood_request import BloodRequest
 from app.services.inventory_service import InventoryService
+from app.services.request_service import RequestService
 from app.forms.inventory_forms import AddStockForm, DepleteStockForm, SearchInventoryForm
+from app.forms.request_forms import (
+    BloodRequestForm,
+    RequestFilterForm,
+    FulfillRequestForm,
+    RejectRequestForm,
+)
 from datetime import datetime, timezone
 from bson import ObjectId
 from app.services.assignment_service import AssignmentService
@@ -69,6 +77,7 @@ def dashboard():
         "low_stock_alert": low_stock_alert,
         "donor_count": donor_count,
         "recent_donations": recent_donations,
+        "request_stats": RequestService.get_request_stats(hospital_id, db),
     }
     
     return render_template("admin/dashboard.html", **context)
@@ -332,3 +341,225 @@ def reassign_donor(donor_id):
         flash(message, "danger")
     
     return redirect(url_for("admin.donors"))
+
+
+# ── Module 3: Donation Request Management ────────────────────
+
+def _get_admin_hospital(admin_id):
+    """Return (admin_user_doc, hospital_id, hospital_name)."""
+    admin_user = db.users.find_one({"_id": ObjectId(admin_id)})
+    hospital_id = admin_user.get("hospital_id") if admin_user else None
+    hospital_name = admin_user.get("hospital_name", "Unknown Hospital") if admin_user else None
+    return admin_user, hospital_id, hospital_name
+
+
+# ── Create Request ───────────────────────────────────────────
+@admin_bp.route("/requests/new", methods=["GET", "POST"])
+@login_required
+@admin_required
+def request_new():
+    """Create a new blood donation request."""
+    _, hospital_id, hospital_name = _get_admin_hospital(current_user.id)
+
+    if not hospital_id:
+        flash("Hospital not assigned to your account.", "warning")
+        return redirect(url_for("admin.dashboard"))
+
+    form = BloodRequestForm()
+
+    if form.validate_on_submit():
+        data = {
+            "hospital_id": hospital_id,
+            "hospital_name": hospital_name,
+            "blood_group": form.blood_group.data,
+            "component_type": form.component_type.data,
+            "units_required": form.units_required.data,
+            "urgency": form.urgency.data,
+            "required_by_date": datetime.combine(
+                form.required_by_date.data, datetime.min.time()
+            ).replace(tzinfo=timezone.utc),
+            "patient_name": form.patient_name.data,
+            "notes": form.notes.data,
+            "created_by": current_user.id,
+        }
+        BloodRequest.create(data, db)
+        flash("Blood request submitted successfully.", "success")
+        return redirect(url_for("admin.requests_list"))
+
+    return render_template("admin/requests_new.html", form=form)
+
+
+# ── List Requests ────────────────────────────────────────────
+@admin_bp.route("/requests")
+@login_required
+@admin_required
+def requests_list():
+    """List blood requests for current hospital with filters + pagination."""
+    _, hospital_id, _ = _get_admin_hospital(current_user.id)
+
+    if not hospital_id:
+        flash("Hospital not assigned to your account.", "warning")
+        return redirect(url_for("admin.dashboard"))
+
+    status_filter = request.args.get("status", "")
+    bg_filter = request.args.get("blood_group", "")
+    page = request.args.get("page", 1, type=int)
+    per_page = 10
+
+    filter_form = RequestFilterForm(
+        status=status_filter,
+        blood_group=bg_filter,
+        formdata=None,
+    )
+
+    reqs, total, total_pages = BloodRequest.get_by_hospital(
+        hospital_id,
+        db,
+        status=status_filter or None,
+        blood_group=bg_filter or None,
+        page=page,
+        per_page=per_page,
+    )
+
+    stats = RequestService.get_request_stats(hospital_id, db)
+
+    context = {
+        "requests": reqs,
+        "filter_form": filter_form,
+        "page": page,
+        "total_pages": total_pages,
+        "total": total,
+        "status_filter": status_filter,
+        "bg_filter": bg_filter,
+        "stats": stats,
+    }
+    return render_template("admin/requests_list.html", **context)
+
+
+# ── Request Detail ───────────────────────────────────────────
+@admin_bp.route("/requests/<request_id>")
+@login_required
+@admin_required
+def request_detail(request_id):
+    """View a single blood request."""
+    _, hospital_id, _ = _get_admin_hospital(current_user.id)
+
+    blood_request = BloodRequest.get_by_id(request_id, db)
+
+    if not blood_request or blood_request.hospital_id != hospital_id:
+        flash("Request not found.", "danger")
+        return redirect(url_for("admin.requests_list"))
+
+    fulfill_form = FulfillRequestForm()
+    reject_form = RejectRequestForm()
+
+    return render_template(
+        "admin/request_detail.html",
+        blood_request=blood_request,
+        fulfill_form=fulfill_form,
+        reject_form=reject_form,
+    )
+
+
+# ── Approve Request ──────────────────────────────────────────
+@admin_bp.route("/requests/<request_id>/approve", methods=["POST"])
+@login_required
+@admin_required
+def request_approve(request_id):
+    _, hospital_id, _ = _get_admin_hospital(current_user.id)
+    blood_request = BloodRequest.get_by_id(request_id, db)
+
+    if not blood_request or blood_request.hospital_id != hospital_id:
+        flash("Request not found.", "danger")
+        return redirect(url_for("admin.requests_list"))
+
+    success, message = blood_request.approve(current_user.id, db)
+    flash(message, "success" if success else "danger")
+    return redirect(url_for("admin.request_detail", request_id=request_id))
+
+
+# ── Reject Request ───────────────────────────────────────────
+@admin_bp.route("/requests/<request_id>/reject", methods=["POST"])
+@login_required
+@admin_required
+def request_reject(request_id):
+    _, hospital_id, _ = _get_admin_hospital(current_user.id)
+    blood_request = BloodRequest.get_by_id(request_id, db)
+
+    if not blood_request or blood_request.hospital_id != hospital_id:
+        flash("Request not found.", "danger")
+        return redirect(url_for("admin.requests_list"))
+
+    form = RejectRequestForm()
+    if form.validate_on_submit():
+        reason = form.reason.data or "No reason provided"
+        success, message = blood_request.reject(current_user.id, reason, db)
+        flash(message, "success" if success else "danger")
+    else:
+        flash("Invalid form submission.", "danger")
+
+    return redirect(url_for("admin.request_detail", request_id=request_id))
+
+
+# ── Cancel Request ───────────────────────────────────────────
+@admin_bp.route("/requests/<request_id>/cancel", methods=["POST"])
+@login_required
+@admin_required
+def request_cancel(request_id):
+    _, hospital_id, _ = _get_admin_hospital(current_user.id)
+    blood_request = BloodRequest.get_by_id(request_id, db)
+
+    if not blood_request or blood_request.hospital_id != hospital_id:
+        flash("Request not found.", "danger")
+        return redirect(url_for("admin.requests_list"))
+
+    success, message = blood_request.cancel(current_user.id, db)
+    flash(message, "success" if success else "danger")
+    return redirect(url_for("admin.request_detail", request_id=request_id))
+
+
+# ── Fulfill Request ──────────────────────────────────────────
+@admin_bp.route("/requests/<request_id>/fulfill", methods=["POST"])
+@login_required
+@admin_required
+def request_fulfill(request_id):
+    _, hospital_id, _ = _get_admin_hospital(current_user.id)
+    blood_request = BloodRequest.get_by_id(request_id, db)
+
+    if not blood_request or blood_request.hospital_id != hospital_id:
+        flash("Request not found.", "danger")
+        return redirect(url_for("admin.requests_list"))
+
+    form = FulfillRequestForm()
+    if form.validate_on_submit():
+        success, message = blood_request.fulfill(current_user.id, form.units_provided.data, db)
+        flash(message, "success" if success else "danger")
+    else:
+        flash("Invalid form submission.", "danger")
+
+    return redirect(url_for("admin.request_detail", request_id=request_id))
+
+
+# ── Match Donors ─────────────────────────────────────────────
+@admin_bp.route("/requests/<request_id>/match-donors")
+@login_required
+@admin_required
+def request_match_donors(request_id):
+    """Show eligible donors matching this request's blood group."""
+    _, hospital_id, _ = _get_admin_hospital(current_user.id)
+    blood_request = BloodRequest.get_by_id(request_id, db)
+
+    if not blood_request or blood_request.hospital_id != hospital_id:
+        flash("Request not found.", "danger")
+        return redirect(url_for("admin.requests_list"))
+
+    assigned_donors, other_donors = RequestService.get_matching_donors(
+        blood_request.blood_group, hospital_id, db
+    )
+
+    return render_template(
+        "admin/request_match_donors.html",
+        blood_request=blood_request,
+        assigned_donors=assigned_donors,
+        other_donors=other_donors,
+    )

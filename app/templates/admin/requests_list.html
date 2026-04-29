@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block title %}Blood Requests{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-5">
+
+  <!-- Header -->
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <h3 class="mb-1">
+        <i class="fa-solid fa-file-medical me-2"></i>Blood Donation Requests
+      </h3>
+      <p class="text-muted">Manage and track all blood requests for your hospital.</p>
+    </div>
+    <div class="col-md-4 text-end">
+      <a href="{{ url_for('admin.request_new') }}" class="btn btn-danger btn-sm me-2">
+        <i class="fa-solid fa-plus me-1"></i>New Request
+      </a>
+      <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-danger btn-sm">
+        <i class="fa-solid fa-arrow-left me-1"></i>Dashboard
+      </a>
+    </div>
+  </div>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+
+  <!-- Stats Row -->
+  <div class="row mb-4">
+    {% set status_labels = [("pending","Pending","warning"),("approved","Approved","primary"),("fulfilled","Fulfilled","success"),("rejected","Rejected","danger"),("cancelled","Cancelled","secondary")] %}
+    {% for status_key, status_label, color in status_labels %}
+    <div class="col-md-2 col-sm-4 mb-2">
+      <div class="card border-0 shadow-sm text-center py-3">
+        <div class="card-body p-2">
+          <h4 class="mb-0 text-{{ color }}">{{ stats.get(status_key, 0) }}</h4>
+          <small class="text-muted">{{ status_label }}</small>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+    <div class="col-md-2 col-sm-4 mb-2">
+      <div class="card border-0 shadow-sm text-center py-3">
+        <div class="card-body p-2">
+          <h4 class="mb-0">{{ total }}</h4>
+          <small class="text-muted">Showing</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-3">
+      <form method="GET" action="{{ url_for('admin.requests_list') }}" class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label mb-1 small fw-semibold">Status</label>
+          {{ filter_form.status(class="form-select form-select-sm", name="status") }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label mb-1 small fw-semibold">Blood Group</label>
+          {{ filter_form.blood_group(class="form-select form-select-sm", name="blood_group") }}
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-danger btn-sm w-100">
+            <i class="fa-solid fa-filter me-1"></i>Filter
+          </button>
+        </div>
+        {% if status_filter or bg_filter %}
+        <div class="col-md-2">
+          <a href="{{ url_for('admin.requests_list') }}" class="btn btn-outline-secondary btn-sm w-100">
+            <i class="fa-solid fa-xmark me-1"></i>Clear
+          </a>
+        </div>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+
+  <!-- Requests Table -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">
+        <i class="fa-solid fa-list me-2"></i>Requests
+        {% if status_filter or bg_filter %}
+          <small class="text-muted fw-normal">(filtered)</small>
+        {% endif %}
+      </h5>
+      <small class="text-muted">{{ total }} record(s)</small>
+    </div>
+    <div class="card-body p-0">
+      {% if requests %}
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-danger">
+            <tr>
+              <th>Request ID</th>
+              <th>Blood Group</th>
+              <th>Component</th>
+              <th>Units</th>
+              <th>Urgency</th>
+              <th>Required By</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for req in requests %}
+            <tr>
+              <td>
+                <a href="{{ url_for('admin.request_detail', request_id=req.id) }}" class="text-danger fw-semibold text-decoration-none">
+                  {{ req.request_id }}
+                </a>
+              </td>
+              <td><span class="badge bg-danger">{{ req.blood_group }}</span></td>
+              <td>{{ req.component_label }}</td>
+              <td>{{ req.units_required }}</td>
+              <td>
+                <span class="badge {{ req.urgency_badge_class }}">{{ req.urgency_label }}</span>
+              </td>
+              <td class="small text-muted">{{ req.required_by_date_display }}</td>
+              <td>
+                <span class="badge {{ req.status_badge_class }}">{{ req.status | capitalize }}</span>
+              </td>
+              <td class="small text-muted">{{ req.created_at_display }}</td>
+              <td>
+                <a href="{{ url_for('admin.request_detail', request_id=req.id) }}" class="btn btn-outline-danger btn-sm">
+                  <i class="fa-solid fa-eye"></i>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+        <div class="text-center text-muted py-5">
+          <i class="fa-solid fa-folder-open fa-3x mb-3 opacity-25"></i>
+          <p class="mb-0">No blood requests found.</p>
+          <a href="{{ url_for('admin.request_new') }}" class="btn btn-danger btn-sm mt-3">
+            <i class="fa-solid fa-plus me-1"></i>Create First Request
+          </a>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="card-footer bg-light">
+      <nav>
+        <ul class="pagination pagination-sm mb-0 justify-content-center">
+          {% if page > 1 %}
+            <li class="page-item">
+              <a class="page-link" href="{{ url_for('admin.requests_list', page=page-1, status=status_filter, blood_group=bg_filter) }}">
+                <i class="fa-solid fa-chevron-left"></i>
+              </a>
+            </li>
+          {% endif %}
+          {% for p in range(1, total_pages + 1) %}
+            <li class="page-item {{ 'active' if p == page else '' }}">
+              <a class="page-link" href="{{ url_for('admin.requests_list', page=p, status=status_filter, blood_group=bg_filter) }}">{{ p }}</a>
+            </li>
+          {% endfor %}
+          {% if page < total_pages %}
+            <li class="page-item">
+              <a class="page-link" href="{{ url_for('admin.requests_list', page=page+1, status=status_filter, blood_group=bg_filter) }}">
+                <i class="fa-solid fa-chevron-right"></i>
+              </a>
+            </li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

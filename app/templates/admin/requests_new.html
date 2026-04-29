@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}New Blood Request{% endblock %}
+
+{% block content %}
+<div class="container mt-5" style="max-width: 700px;">
+
+  <!-- Header -->
+  <div class="row mb-4">
+    <div class="col">
+      <h3 class="mb-1">
+        <i class="fa-solid fa-file-medical me-2 text-danger"></i>New Blood Request
+      </h3>
+      <p class="text-muted">Submit a blood donation request for your hospital.</p>
+    </div>
+    <div class="col-auto">
+      <a href="{{ url_for('admin.requests_list') }}" class="btn btn-outline-danger btn-sm">
+        <i class="fa-solid fa-arrow-left me-1"></i>Back to Requests
+      </a>
+    </div>
+  </div>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+      <form method="POST" action="{{ url_for('admin.request_new') }}">
+        {{ form.hidden_tag() }}
+
+        <!-- Blood Group & Component -->
+        <div class="row mb-3">
+          <div class="col-md-6">
+            {{ form.blood_group.label(class="form-label fw-semibold") }}
+            {{ form.blood_group(class="form-select" + (" is-invalid" if form.blood_group.errors else "")) }}
+            {% for error in form.blood_group.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+          <div class="col-md-6">
+            {{ form.component_type.label(class="form-label fw-semibold") }}
+            {{ form.component_type(class="form-select" + (" is-invalid" if form.component_type.errors else "")) }}
+            {% for error in form.component_type.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Units & Urgency -->
+        <div class="row mb-3">
+          <div class="col-md-6">
+            {{ form.units_required.label(class="form-label fw-semibold") }}
+            {{ form.units_required(class="form-control" + (" is-invalid" if form.units_required.errors else ""), placeholder="e.g. 2", type="number", min="1") }}
+            {% for error in form.units_required.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+          <div class="col-md-6">
+            {{ form.urgency.label(class="form-label fw-semibold") }}
+            {{ form.urgency(class="form-select" + (" is-invalid" if form.urgency.errors else "")) }}
+            {% for error in form.urgency.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Required By Date -->
+        <div class="mb-3">
+          {{ form.required_by_date.label(class="form-label fw-semibold") }}
+          {{ form.required_by_date(class="form-control" + (" is-invalid" if form.required_by_date.errors else ""), type="date") }}
+          {% for error in form.required_by_date.errors %}
+            <div class="invalid-feedback">{{ error }}</div>
+          {% endfor %}
+        </div>
+
+        <!-- Patient Name -->
+        <div class="mb-3">
+          {{ form.patient_name.label(class="form-label fw-semibold") }}
+          {{ form.patient_name(class="form-control" + (" is-invalid" if form.patient_name.errors else ""), placeholder="Patient name (optional)") }}
+          {% for error in form.patient_name.errors %}
+            <div class="invalid-feedback">{{ error }}</div>
+          {% endfor %}
+        </div>
+
+        <!-- Notes -->
+        <div class="mb-4">
+          {{ form.notes.label(class="form-label fw-semibold") }}
+          {{ form.notes(class="form-control" + (" is-invalid" if form.notes.errors else ""), rows="3", placeholder="Additional notes (optional)") }}
+          {% for error in form.notes.errors %}
+            <div class="invalid-feedback">{{ error }}</div>
+          {% endfor %}
+        </div>
+
+        {{ form.submit(class="btn btn-danger w-100 py-2 fw-semibold") }}
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
