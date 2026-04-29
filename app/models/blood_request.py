@@ -91,18 +91,24 @@ class BloodRequest:
     # ── Static / Class methods ─────────────────────────────────────
 
     @staticmethod
-    def _generate_request_id():
-        """Generate human-friendly request ID: REQ-YYYYMMDD-XXXX"""
-        date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
-        suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
-        return f"REQ-{date_str}-{suffix}"
+    def _generate_request_id(db):
+        """Generate unique human-friendly request ID: REQ-YYYYMMDD-XXXX."""
+        for _ in range(10):
+            date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
+            suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
+            candidate = f"REQ-{date_str}-{suffix}"
+            if not db.blood_requests.find_one({"request_id": candidate}):
+                return candidate
+        # Extremely unlikely fallback: use hex from a UUID-like source
+        import uuid
+        return f"REQ-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
 
     @staticmethod
     def create(data, db):
         """Insert a new blood request into the database."""
         now = datetime.now(timezone.utc)
         doc = {
-            "request_id": BloodRequest._generate_request_id(),
+            "request_id": BloodRequest._generate_request_id(db),
             "hospital_id": data["hospital_id"],
             "hospital_name": data["hospital_name"],
             "blood_group": data["blood_group"],

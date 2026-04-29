@@ -164,9 +164,13 @@
             </li>
           {% endif %}
           {% for p in range(1, total_pages + 1) %}
-            <li class="page-item {{ 'active' if p == page else '' }}">
-              <a class="page-link" href="{{ url_for('admin.requests_list', page=p, status=status_filter, blood_group=bg_filter) }}">{{ p }}</a>
-            </li>
+            {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+              <li class="page-item {{ 'active' if p == page else '' }}">
+                <a class="page-link" href="{{ url_for('admin.requests_list', page=p, status=status_filter, blood_group=bg_filter) }}">{{ p }}</a>
+              </li>
+            {% elif p == page - 3 or p == page + 3 %}
+              <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+            {% endif %}
           {% endfor %}
           {% if page < total_pages %}
             <li class="page-item">

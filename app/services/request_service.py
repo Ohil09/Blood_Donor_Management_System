@@ -7,13 +7,12 @@ class RequestService:
     @staticmethod
     def get_matching_donors(blood_group, hospital_id, db):
         """Return eligible donors matching the given blood group (hospital-scoped first, then global)."""
-        # First look for assigned donors at this hospital
-        hospital_donors = InventoryService.search_donors_by_blood_group(
+        all_eligible_donors = InventoryService.search_donors_by_blood_group(
             blood_group, only_eligible=True, db=db
         )
-        # Filter to hospital-assigned donors
-        assigned = [d for d in hospital_donors if d.get("hospital_id") == hospital_id]
-        others = [d for d in hospital_donors if d.get("hospital_id") != hospital_id]
+        # Split into hospital-assigned and others
+        assigned = [d for d in all_eligible_donors if d.get("hospital_id") == hospital_id]
+        others = [d for d in all_eligible_donors if d.get("hospital_id") != hospital_id]
 
         # Enrich with eligibility metadata
         def enrich(donor):
