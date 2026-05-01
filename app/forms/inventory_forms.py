@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, IntegerField, SelectField, SubmitField
+from wtforms import BooleanField, StringField, IntegerField, SelectField, SubmitField
 from wtforms.validators import DataRequired, NumberRange, ValidationError
 
 class AddStockForm(FlaskForm):
@@ -71,5 +71,5 @@ class SearchInventoryForm(FlaskForm):
         ]
     )
     city = StringField("City (optional)")
-    only_eligible = StringField("Only Eligible Donors", default="on")
+    only_eligible = BooleanField("Only Eligible Donors", default=True)
     submit = SubmitField("Search")

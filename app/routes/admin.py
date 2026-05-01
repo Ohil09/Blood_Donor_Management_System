@@ -19,7 +19,7 @@ def admin_required(f):
     from functools import wraps
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or current_user.role not in ["admin", "superadmin"]:
+        if not current_user.is_authenticated or current_user.role not in ["admin", "hospital_admin", "superadmin"]:
             flash("Access denied. Admin only.", "danger")
             return redirect(url_for("auth.login"))
         return f(*args, **kwargs)
@@ -184,7 +184,7 @@ def search_donors():
         search_performed = True
         blood_group = form.blood_group.data
         city = form.city.data
-        only_eligible = form.only_eligible.data == "on"
+        only_eligible = bool(form.only_eligible.data)
         
         if not blood_group:
             flash("Please select a blood group.", "warning")
