@@ -44,7 +44,7 @@ class RegistrationForm(FlaskForm):
     email = StringField("Email",
                     validators=[DataRequired(), Email()])
     phone = StringField("Phone Number",
-                    validators=[DataRequired(), Length(min=10, max=15)])
+                    validators=[DataRequired(), Length(min=10, max=10)])
     password = PasswordField("Password",
                     validators=[DataRequired(), Length(min=6)])
     confirm = PasswordField("Confirm Password",
