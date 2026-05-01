@@ -15,6 +15,10 @@ class User(UserMixin):
         self.blood_group= user_doc.get("blood_group")
         self.city       = user_doc.get("city")
         self.hospital_id= user_doc.get("hospital_id")
+
+        # ✅ ADD THIS LINE
+        self.hospital_name = user_doc.get("hospital_name")
+
         self.is_active_account = user_doc.get("is_active", True)
 
     def get_id(self):
