@@ -44,6 +44,10 @@ class InventoryService:
         if not last_donation:
             return True  # Never donated = eligible
         
+        # Ensure timezone-aware comparison — MongoDB may return naive UTC datetimes
+        if last_donation.tzinfo is None:
+            last_donation = last_donation.replace(tzinfo=timezone.utc)
+        
         # 56 days for whole blood
         next_eligible_date = last_donation + timedelta(days=56)
         return datetime.now(timezone.utc) >= next_eligible_date
@@ -55,6 +59,10 @@ class InventoryService:
         
         if not last_donation:
             return 0
+        
+        # Ensure timezone-aware comparison — MongoDB may return naive UTC datetimes
+        if last_donation.tzinfo is None:
+            last_donation = last_donation.replace(tzinfo=timezone.utc)
         
         next_eligible_date = last_donation + timedelta(days=56)
         days_left = (next_eligible_date - datetime.now(timezone.utc)).days

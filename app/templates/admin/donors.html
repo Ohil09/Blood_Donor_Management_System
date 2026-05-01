@@ -67,7 +67,11 @@
                       {% endif %}
                     </td>
                     <td class="text-muted small">
-                      {{ donor.get("last_donation_date", "Never") }}
+                      {% if donor.last_donation_date %}
+                        {{ donor.last_donation_date.strftime("%d %b %Y") }}
+                      {% else %}
+                        Never
+                      {% endif %}
                     </td>
                   </tr>
                 {% endfor %}

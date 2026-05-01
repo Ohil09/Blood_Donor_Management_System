@@ -75,10 +75,12 @@ def login():
         login_id = form.login_id.data.strip()
         password = form.password.data
 
-        # Find user by donor_id OR email
+        # Find user by donor_id OR email.
+        # Donor IDs are always stored uppercase (BDMS-XXXXXX); normalise the
+        # input so users can type in any case.
         doc = db.users.find_one({
             "$or": [
-                {"donor_id": login_id},
+                {"donor_id": login_id.upper()},
                 {"email":    login_id.lower()}
             ]
         })
@@ -109,9 +111,7 @@ def _redirect_by_role(role):
     if role == "donor":
         return redirect(url_for("donor.dashboard"))
     elif role in ["admin", "superadmin"]:
-        return redirect(url_for("admin.dashboard"))   # temp until donor bp exists
+        return redirect(url_for("admin.dashboard"))
     elif role == "hospital_admin":
-        return redirect(url_for("auth.login"))   # temp until admin bp exists
-    elif role == "superadmin":
-        return redirect(url_for("auth.login"))   # temp until superadmin bp exists
+        return redirect(url_for("auth.login"))
     return redirect(url_for("auth.login"))

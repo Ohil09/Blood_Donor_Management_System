@@ -33,6 +33,9 @@ def dashboard():
     days_until_eligible = 0
 
     if last_donation:
+        # Ensure timezone-aware comparison — MongoDB may return naive UTC datetimes
+        if last_donation.tzinfo is None:
+            last_donation = last_donation.replace(tzinfo=timezone.utc)
         # 56 days for whole blood (simplest rule)
         next_eligible_date = last_donation + timedelta(days=56)
         days_until_eligible = (next_eligible_date - datetime.now(timezone.utc)).days

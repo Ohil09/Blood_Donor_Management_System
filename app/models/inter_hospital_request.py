@@ -24,6 +24,9 @@ class InterHospitalRequest:
     URGENCY_CHOICES = ["routine", "urgent", "critical"]
     COMPONENT_CHOICES = ["whole_blood", "plasma", "platelets"]
 
+    # Numeric rank used for sorting in the marketplace (higher = more urgent)
+    URGENCY_RANK = {"routine": 1, "urgent": 2, "critical": 3}
+
     OPEN      = "open"
     OFFERED   = "offered"
     ACCEPTED  = "accepted"
@@ -65,6 +68,7 @@ class InterHospitalRequest:
             "component_type":   component_type,
             "units_needed":     int(units_needed),
             "urgency":          urgency,
+            "urgency_rank":     InterHospitalRequest.URGENCY_RANK.get(urgency, 1),
             "required_by_date": required_by_date,
             "notes":            notes or "",
             "status":           InterHospitalRequest.OPEN,
@@ -282,7 +286,6 @@ class InterHospitalRequest:
         - Adds units_needed to requester's inventory.
         - Status becomes 'completed'.
         """
-        from app.models.inventory import Inventory
 
         doc = InterHospitalRequest.get_by_id(db, request_id)
         if not doc:

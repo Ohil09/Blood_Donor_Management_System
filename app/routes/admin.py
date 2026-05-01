@@ -3,8 +3,10 @@ from flask_login import login_required, current_user
 from app import db
 from app.models.inventory import Inventory
 from app.models.blood_request import BloodRequest
+from app.models.inter_hospital_request import InterHospitalRequest
 from app.services.inventory_service import InventoryService
 from app.services.request_service import RequestService
+from app.services.exchange_service import ExchangeService
 from app.forms.inventory_forms import AddStockForm, DepleteStockForm, SearchInventoryForm
 from app.forms.request_forms import (
     BloodRequestForm,
@@ -12,6 +14,7 @@ from app.forms.request_forms import (
     FulfillRequestForm,
     RejectRequestForm,
 )
+from app.forms.exchange_forms import BroadcastRequestForm, SupplyOfferForm, OfferActionForm
 from datetime import datetime, timezone
 from bson import ObjectId
 from app.services.assignment_service import AssignmentService
@@ -563,3 +566,264 @@ def request_match_donors(request_id):
         assigned_donors=assigned_donors,
         other_donors=other_donors,
     )
+
+# ═══════════════════════════════════════════════════════════════
+# Module 4 – Inter-Hospital Blood Exchange
+# ═══════════════════════════════════════════════════════════════
+
+def _get_exchange_hospital(admin_id):
+    """Return (hospital_id, hospital_name) for an admin user."""
+    doc = db.users.find_one({"_id": ObjectId(admin_id)})
+    if not doc:
+        return None, None
+    return doc.get("hospital_id"), doc.get("hospital_name", "Unknown Hospital")
+
+
+# ── Broadcast New Request ────────────────────────────────────
+@admin_bp.route("/exchange/new", methods=["GET", "POST"])
+@login_required
+@admin_required
+def exchange_new():
+    """Hospital A broadcasts a blood-supply need to all other hospitals."""
+    hospital_id, hospital_name = _get_exchange_hospital(current_user.id)
+    if not hospital_id:
+        flash("Hospital not assigned to your account.", "warning")
+        return redirect(url_for("admin.dashboard"))
+
+    form = BroadcastRequestForm()
+
+    if form.validate_on_submit():
+        InterHospitalRequest.create(
+            db=db,
+            requester_hospital_id=hospital_id,
+            requester_hospital_name=hospital_name,
+            created_by=current_user.id,
+            blood_group=form.blood_group.data,
+            component_type=form.component_type.data,
+            units_needed=form.units_needed.data,
+            urgency=form.urgency.data,
+            required_by_date=datetime.combine(
+                form.required_by_date.data, datetime.min.time()
+            ).replace(tzinfo=timezone.utc),
+            notes=form.notes.data,
+        )
+        flash("Broadcast request published. Other hospitals can now respond.", "success")
+        return redirect(url_for("admin.exchange_my_requests"))
+
+    return render_template("admin/exchange_new.html", form=form)
+
+
+# ── My Broadcast Requests ────────────────────────────────────
+@admin_bp.route("/exchange/my-requests")
+@login_required
+@admin_required
+def exchange_my_requests():
+    """Hospital A sees all broadcasts it has created."""
+    hospital_id, _ = _get_exchange_hospital(current_user.id)
+    if not hospital_id:
+        flash("Hospital not assigned to your account.", "warning")
+        return redirect(url_for("admin.dashboard"))
+
+    page = request.args.get("page", 1, type=int)
+    per_page = 10
+    items, total = ExchangeService.list_my_requests(db, hospital_id, page=page, per_page=per_page)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+
+    return render_template(
+        "admin/exchange_my_requests.html",
+        items=items,
+        page=page,
+        total_pages=total_pages,
+        total=total,
+    )
+
+
+# ── Marketplace ──────────────────────────────────────────────
+@admin_bp.route("/exchange/marketplace")
+@login_required
+@admin_required
+def exchange_marketplace():
+    """Hospital B sees open broadcasts from all other hospitals."""
+    hospital_id, _ = _get_exchange_hospital(current_user.id)
+    if not hospital_id:
+        flash("Hospital not assigned to your account.", "warning")
+        return redirect(url_for("admin.dashboard"))
+
+    page = request.args.get("page", 1, type=int)
+    per_page = 10
+    items, total = ExchangeService.list_marketplace(db, hospital_id, page=page, per_page=per_page)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+
+    offer_form = SupplyOfferForm()
+
+    return render_template(
+        "admin/exchange_marketplace.html",
+        items=items,
+        page=page,
+        total_pages=total_pages,
+        total=total,
+        offer_form=offer_form,
+    )
+
+
+# ── Exchange Detail ──────────────────────────────────────────
+@admin_bp.route("/exchange/<exchange_id>")
+@login_required
+@admin_required
+def exchange_detail(exchange_id):
+    """Detail view — requester sees offers; supplier sees own offer status."""
+    hospital_id, _ = _get_exchange_hospital(current_user.id)
+    if not hospital_id:
+        flash("Hospital not assigned to your account.", "warning")
+        return redirect(url_for("admin.dashboard"))
+
+    doc = InterHospitalRequest.get_by_id(db, exchange_id)
+    if not doc:
+        flash("Exchange request not found.", "danger")
+        return redirect(url_for("admin.exchange_marketplace"))
+
+    is_requester = doc["requester_hospital_id"] == str(hospital_id)
+
+    # Offer placed by this supplier hospital (if any)
+    my_offer = next(
+        (o for o in doc.get("offers", [])
+         if o["supplier_hospital_id"] == str(hospital_id)),
+        None,
+    )
+
+    offer_form    = SupplyOfferForm()
+    action_form   = OfferActionForm()
+
+    return render_template(
+        "admin/exchange_detail.html",
+        doc=doc,
+        exchange_id=exchange_id,
+        is_requester=is_requester,
+        my_offer=my_offer,
+        offer_form=offer_form,
+        action_form=action_form,
+    )
+
+
+# ── Place Offer ──────────────────────────────────────────────
+@admin_bp.route("/exchange/<exchange_id>/offer", methods=["POST"])
+@login_required
+@admin_required
+def exchange_place_offer(exchange_id):
+    """Hospital B submits a supply offer."""
+    hospital_id, hospital_name = _get_exchange_hospital(current_user.id)
+    if not hospital_id:
+        flash("Hospital not assigned to your account.", "warning")
+        return redirect(url_for("admin.dashboard"))
+
+    form = SupplyOfferForm()
+    if form.validate_on_submit():
+        ok, msg, _ = InterHospitalRequest.place_offer(
+            db=db,
+            request_id=exchange_id,
+            supplier_hospital_id=hospital_id,
+            supplier_hospital_name=hospital_name,
+            units_offered=form.units_offered.data,
+            offered_by=current_user.id,
+            note=form.note.data,
+        )
+        flash(msg, "success" if ok else "danger")
+    else:
+        flash("Invalid form. Please check the units field.", "danger")
+
+    return redirect(url_for("admin.exchange_detail", exchange_id=exchange_id))
+
+
+# ── Accept Offer ─────────────────────────────────────────────
+@admin_bp.route("/exchange/<exchange_id>/offer/<offer_id>/accept", methods=["POST"])
+@login_required
+@admin_required
+def exchange_accept_offer(exchange_id, offer_id):
+    """Requester hospital accepts a specific offer."""
+    hospital_id, _ = _get_exchange_hospital(current_user.id)
+    doc = InterHospitalRequest.get_by_id(db, exchange_id)
+
+    if not doc or doc["requester_hospital_id"] != str(hospital_id):
+        flash("Not authorised.", "danger")
+        return redirect(url_for("admin.exchange_my_requests"))
+
+    form = OfferActionForm()
+    if form.validate_on_submit():
+        ok, msg = InterHospitalRequest.accept_offer(db, exchange_id, offer_id, current_user.id)
+        flash(msg, "success" if ok else "danger")
+    else:
+        flash("Invalid request.", "danger")
+
+    return redirect(url_for("admin.exchange_detail", exchange_id=exchange_id))
+
+
+# ── Decline Offer ────────────────────────────────────────────
+@admin_bp.route("/exchange/<exchange_id>/offer/<offer_id>/decline", methods=["POST"])
+@login_required
+@admin_required
+def exchange_decline_offer(exchange_id, offer_id):
+    """Requester hospital declines a specific offer."""
+    hospital_id, _ = _get_exchange_hospital(current_user.id)
+    doc = InterHospitalRequest.get_by_id(db, exchange_id)
+
+    if not doc or doc["requester_hospital_id"] != str(hospital_id):
+        flash("Not authorised.", "danger")
+        return redirect(url_for("admin.exchange_my_requests"))
+
+    form = OfferActionForm()
+    if form.validate_on_submit():
+        ok, msg = InterHospitalRequest.decline_offer(db, exchange_id, offer_id, current_user.id)
+        flash(msg, "success" if ok else "danger")
+    else:
+        flash("Invalid request.", "danger")
+
+    return redirect(url_for("admin.exchange_detail", exchange_id=exchange_id))
+
+
+# ── Complete Exchange ─────────────────────────────────────────
+@admin_bp.route("/exchange/<exchange_id>/complete", methods=["POST"])
+@login_required
+@admin_required
+def exchange_complete(exchange_id):
+    """
+    Requester marks the exchange as physically completed.
+    Inventories are updated automatically.
+    """
+    hospital_id, _ = _get_exchange_hospital(current_user.id)
+    doc = InterHospitalRequest.get_by_id(db, exchange_id)
+
+    if not doc or doc["requester_hospital_id"] != str(hospital_id):
+        flash("Not authorised.", "danger")
+        return redirect(url_for("admin.exchange_my_requests"))
+
+    form = OfferActionForm()
+    if form.validate_on_submit():
+        ok, msg = ExchangeService.complete_exchange(db, exchange_id, current_user.id)
+        flash(msg, "success" if ok else "danger")
+    else:
+        flash("Invalid request.", "danger")
+
+    return redirect(url_for("admin.exchange_detail", exchange_id=exchange_id))
+
+
+# ── Cancel Broadcast ─────────────────────────────────────────
+@admin_bp.route("/exchange/<exchange_id>/cancel", methods=["POST"])
+@login_required
+@admin_required
+def exchange_cancel(exchange_id):
+    """Requester cancels their own open broadcast."""
+    hospital_id, _ = _get_exchange_hospital(current_user.id)
+    doc = InterHospitalRequest.get_by_id(db, exchange_id)
+
+    if not doc or doc["requester_hospital_id"] != str(hospital_id):
+        flash("Not authorised.", "danger")
+        return redirect(url_for("admin.exchange_my_requests"))
+
+    form = OfferActionForm()
+    if form.validate_on_submit():
+        ok, msg = InterHospitalRequest.cancel(db, exchange_id, current_user.id)
+        flash(msg, "success" if ok else "danger")
+    else:
+        flash("Invalid request.", "danger")
+
+    return redirect(url_for("admin.exchange_my_requests"))

@@ -165,7 +165,7 @@
 
             <!-- Cancel -->
             <form method="POST" action="{{ url_for('admin.request_cancel', request_id=blood_request.id) }}">
-              {{ reject_form.hidden_tag() }}
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-outline-secondary w-100 btn-sm"
                 onclick="return confirm('Cancel this request?')">
                 <i class="fa-solid fa-ban me-1"></i>Cancel Request
