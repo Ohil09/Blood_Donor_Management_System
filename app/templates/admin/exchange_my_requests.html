@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}My Broadcast Requests{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-5">
+
+  <!-- Header -->
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <h3 class="mb-1">
+        <i class="fa-solid fa-tower-broadcast me-2"></i>My Broadcast Requests
+      </h3>
+      <p class="text-muted">Blood supply broadcasts your hospital has published.</p>
+    </div>
+    <div class="col-md-4 text-end">
+      <a href="{{ url_for('admin.exchange_new') }}" class="btn btn-danger btn-sm me-2">
+        <i class="fa-solid fa-plus me-1"></i>New Broadcast
+      </a>
+      <a href="{{ url_for('admin.exchange_marketplace') }}" class="btn btn-outline-danger btn-sm me-2">
+        <i class="fa-solid fa-store me-1"></i>Marketplace
+      </a>
+      <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-arrow-left me-1"></i>Dashboard
+      </a>
+    </div>
+  </div>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+
+  <!-- Requests Table -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">
+        <i class="fa-solid fa-list me-2"></i>Broadcasts
+      </h5>
+      <small class="text-muted">{{ total }} record(s)</small>
+    </div>
+    <div class="card-body p-0">
+      {% if items %}
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-danger">
+            <tr>
+              <th>Blood Group</th>
+              <th>Component</th>
+              <th>Units Needed</th>
+              <th>Urgency</th>
+              <th>Required By</th>
+              <th>Status</th>
+              <th>Offers</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items %}
+            {% set urgency_colors = {"routine": "bg-secondary", "urgent": "bg-warning text-dark", "critical": "bg-danger"} %}
+            {% set status_colors = {"open": "bg-success", "offered": "bg-info text-dark", "accepted": "bg-warning text-dark", "completed": "bg-primary", "cancelled": "bg-secondary"} %}
+            <tr>
+              <td><span class="badge bg-danger">{{ item.blood_group }}</span></td>
+              <td class="small">{{ {"whole_blood": "Whole Blood", "plasma": "Plasma", "platelets": "Platelets"}.get(item.component_type, item.component_type) }}</td>
+              <td>{{ item.units_needed }}</td>
+              <td>
+                <span class="badge {{ urgency_colors.get(item.urgency, 'bg-secondary') }}">
+                  {{ item.urgency | capitalize }}
+                </span>
+              </td>
+              <td class="small text-muted">
+                {{ item.required_by_date.strftime("%d %b %Y") if item.required_by_date else "—" }}
+              </td>
+              <td>
+                <span class="badge {{ status_colors.get(item.status, 'bg-secondary') }}">
+                  {{ item.status | capitalize }}
+                </span>
+              </td>
+              <td>
+                {% if item.pending_offers > 0 %}
+                  <span class="badge bg-warning text-dark">
+                    {{ item.pending_offers }} pending
+                  </span>
+                {% else %}
+                  <span class="text-muted small">{{ item.offer_count }} total</span>
+                {% endif %}
+              </td>
+              <td class="small text-muted">
+                {{ item.created_at.strftime("%d %b %Y") if item.created_at else "—" }}
+              </td>
+              <td>
+                <a href="{{ url_for('admin.exchange_detail', exchange_id=item._id_str) }}"
+                   class="btn btn-outline-danger btn-sm">
+                  <i class="fa-solid fa-eye"></i>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+        <div class="text-center text-muted py-5">
+          <i class="fa-solid fa-tower-broadcast fa-3x mb-3 opacity-25"></i>
+          <p class="mb-0">No broadcasts yet.</p>
+          <a href="{{ url_for('admin.exchange_new') }}" class="btn btn-danger btn-sm mt-3">
+            <i class="fa-solid fa-plus me-1"></i>Create First Broadcast
+          </a>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="card-footer bg-light">
+      <nav>
+        <ul class="pagination pagination-sm mb-0 justify-content-center">
+          {% if page > 1 %}
+            <li class="page-item">
+              <a class="page-link" href="{{ url_for('admin.exchange_my_requests', page=page-1) }}">
+                <i class="fa-solid fa-chevron-left"></i>
+              </a>
+            </li>
+          {% endif %}
+          {% for p in range(1, total_pages + 1) %}
+            {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+              <li class="page-item {{ 'active' if p == page else '' }}">
+                <a class="page-link" href="{{ url_for('admin.exchange_my_requests', page=p) }}">{{ p }}</a>
+              </li>
+            {% elif p == page - 3 or p == page + 3 %}
+              <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+            {% endif %}
+          {% endfor %}
+          {% if page < total_pages %}
+            <li class="page-item">
+              <a class="page-link" href="{{ url_for('admin.exchange_my_requests', page=page+1) }}">
+                <i class="fa-solid fa-chevron-right"></i>
+              </a>
+            </li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

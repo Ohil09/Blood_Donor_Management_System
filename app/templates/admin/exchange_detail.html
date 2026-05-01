@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+{% block title %}Exchange Request Detail{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-5">
+
+  {% set urgency_colors = {"routine": "bg-secondary", "urgent": "bg-warning text-dark", "critical": "bg-danger"} %}
+  {% set status_colors = {"open": "bg-success", "offered": "bg-info text-dark", "accepted": "bg-warning text-dark", "completed": "bg-primary", "cancelled": "bg-secondary"} %}
+  {% set component_labels = {"whole_blood": "Whole Blood", "plasma": "Plasma", "platelets": "Platelets"} %}
+
+  <!-- Header -->
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <h3 class="mb-1">
+        <i class="fa-solid fa-arrows-left-right me-2"></i>Exchange Request
+      </h3>
+      <p class="text-muted mb-0">
+        {{ doc.requester_hospital_name }} &mdash;
+        <span class="badge {{ status_colors.get(doc.status, 'bg-secondary') }}">
+          {{ doc.status | capitalize }}
+        </span>
+      </p>
+    </div>
+    <div class="col-md-4 text-end">
+      {% if is_requester %}
+        <a href="{{ url_for('admin.exchange_my_requests') }}" class="btn btn-outline-danger btn-sm">
+          <i class="fa-solid fa-arrow-left me-1"></i>My Broadcasts
+        </a>
+      {% else %}
+        <a href="{{ url_for('admin.exchange_marketplace') }}" class="btn btn-outline-danger btn-sm">
+          <i class="fa-solid fa-arrow-left me-1"></i>Marketplace
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+
+  <div class="row">
+
+    <!-- Left: Request Details -->
+    <div class="col-md-8">
+
+      <!-- Request Info Card -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-light border-bottom">
+          <h5 class="mb-0"><i class="fa-solid fa-info-circle me-2"></i>Request Details</h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <p class="text-muted mb-1 small">Requesting Hospital</p>
+              <strong>{{ doc.requester_hospital_name }}</strong>
+            </div>
+            <div class="col-sm-6">
+              <p class="text-muted mb-1 small">Blood Group</p>
+              <span class="badge bg-danger fs-6 px-3">{{ doc.blood_group }}</span>
+            </div>
+            <div class="col-sm-6">
+              <p class="text-muted mb-1 small">Component</p>
+              <strong>{{ component_labels.get(doc.component_type, doc.component_type) }}</strong>
+            </div>
+            <div class="col-sm-6">
+              <p class="text-muted mb-1 small">Units Needed</p>
+              <strong>{{ doc.units_needed }}</strong>
+            </div>
+            <div class="col-sm-6">
+              <p class="text-muted mb-1 small">Urgency</p>
+              <span class="badge {{ urgency_colors.get(doc.urgency, 'bg-secondary') }}">
+                {{ doc.urgency | capitalize }}
+              </span>
+            </div>
+            <div class="col-sm-6">
+              <p class="text-muted mb-1 small">Required By</p>
+              <strong>{{ doc.required_by_date.strftime("%d %b %Y") if doc.required_by_date else "—" }}</strong>
+            </div>
+            <div class="col-sm-6">
+              <p class="text-muted mb-1 small">Published</p>
+              <strong>{{ doc.created_at.strftime("%d %b %Y, %I:%M %p") if doc.created_at else "—" }}</strong>
+            </div>
+            {% if doc.notes %}
+            <div class="col-12">
+              <p class="text-muted mb-1 small">Notes</p>
+              <p class="mb-0">{{ doc.notes }}</p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Offers List (visible to requester) -->
+      {% if is_requester %}
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-light border-bottom">
+          <h5 class="mb-0">
+            <i class="fa-solid fa-hand-holding-medical me-2"></i>Supply Offers
+            <span class="badge bg-danger ms-2">{{ doc.offers | length }}</span>
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          {% if doc.offers %}
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Hospital</th>
+                  <th>Units Offered</th>
+                  <th>Note</th>
+                  <th>Offered At</th>
+                  <th>Status</th>
+                  {% if doc.status in ("open", "offered") %}
+                  <th>Actions</th>
+                  {% endif %}
+                </tr>
+              </thead>
+              <tbody>
+                {% for offer in doc.offers %}
+                {% set offer_colors = {"pending": "bg-warning text-dark", "accepted": "bg-success", "declined": "bg-secondary"} %}
+                <tr>
+                  <td>{{ offer.supplier_hospital_name }}</td>
+                  <td>{{ offer.units_offered }}</td>
+                  <td class="small text-muted">{{ offer.response_note or "—" }}</td>
+                  <td class="small text-muted">
+                    {{ offer.offered_at.strftime("%d %b %Y") if offer.offered_at else "—" }}
+                  </td>
+                  <td>
+                    <span class="badge {{ offer_colors.get(offer.status, 'bg-secondary') }}">
+                      {{ offer.status | capitalize }}
+                    </span>
+                  </td>
+                  {% if doc.status in ("open", "offered") %}
+                  <td>
+                    {% if offer.status == "pending" %}
+                    <!-- Accept -->
+                    <form method="POST" action="{{ url_for('admin.exchange_accept_offer', exchange_id=exchange_id, offer_id=offer.offer_id) }}" class="d-inline">
+                      {{ action_form.hidden_tag() }}
+                      <button type="submit" class="btn btn-success btn-sm"
+                        onclick="return confirm('Accept this offer?')">
+                        <i class="fa-solid fa-check"></i>
+                      </button>
+                    </form>
+                    <!-- Decline -->
+                    <form method="POST" action="{{ url_for('admin.exchange_decline_offer', exchange_id=exchange_id, offer_id=offer.offer_id) }}" class="d-inline">
+                      {{ action_form.hidden_tag() }}
+                      <button type="submit" class="btn btn-outline-secondary btn-sm"
+                        onclick="return confirm('Decline this offer?')">
+                        <i class="fa-solid fa-xmark"></i>
+                      </button>
+                    </form>
+                    {% else %}
+                    <span class="text-muted small">—</span>
+                    {% endif %}
+                  </td>
+                  {% endif %}
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <div class="text-center text-muted py-4">
+            <i class="fa-solid fa-inbox fa-2x mb-2 opacity-25"></i>
+            <p class="mb-0 small">No offers received yet.</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Audit Trail -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light border-bottom">
+          <h5 class="mb-0"><i class="fa-solid fa-clock-rotate-left me-2"></i>Audit Trail</h5>
+        </div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush">
+            {% for entry in doc.audit | reverse %}
+            <li class="list-group-item">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <span class="badge bg-secondary me-2">{{ entry.action | replace("_", " ") | capitalize }}</span>
+                  {% if entry.note %}
+                    <span class="text-muted small">{{ entry.note }}</span>
+                  {% endif %}
+                </div>
+                <small class="text-muted">
+                  {{ entry.at.strftime("%d %b %Y, %I:%M %p") if entry.at else "" }}
+                </small>
+              </div>
+            </li>
+            {% else %}
+            <li class="list-group-item text-muted">No history available.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right: Actions -->
+    <div class="col-md-4">
+
+      <!-- Requester Actions -->
+      {% if is_requester %}
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-light border-bottom">
+          <h5 class="mb-0"><i class="fa-solid fa-bolt me-2"></i>Actions</h5>
+        </div>
+        <div class="card-body">
+
+          {% if doc.status == "accepted" %}
+          <!-- Complete Exchange -->
+          <form method="POST" action="{{ url_for('admin.exchange_complete', exchange_id=exchange_id) }}" class="mb-3">
+            {{ action_form.hidden_tag() }}
+            <button type="submit" class="btn btn-success w-100"
+              onclick="return confirm('Mark exchange as completed? Inventories will be updated automatically.')">
+              <i class="fa-solid fa-check-double me-1"></i>Complete Exchange
+            </button>
+          </form>
+          <p class="text-muted small text-center">
+            Completing this will transfer blood units between inventories.
+          </p>
+          {% endif %}
+
+          {% if doc.status in ("open", "offered") %}
+          <!-- Cancel Broadcast -->
+          <form method="POST" action="{{ url_for('admin.exchange_cancel', exchange_id=exchange_id) }}">
+            {{ action_form.hidden_tag() }}
+            <button type="submit" class="btn btn-outline-secondary w-100"
+              onclick="return confirm('Cancel this broadcast request?')">
+              <i class="fa-solid fa-ban me-1"></i>Cancel Broadcast
+            </button>
+          </form>
+          {% endif %}
+
+          {% if doc.status in ("completed", "cancelled") %}
+          <p class="text-muted small text-center mb-0">
+            <i class="fa-solid fa-lock me-1"></i>This exchange is in a terminal state.
+          </p>
+          {% endif %}
+
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Supplier: My Offer Status -->
+      {% if not is_requester %}
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-light border-bottom">
+          <h5 class="mb-0"><i class="fa-solid fa-hand-holding-medical me-2"></i>Supply Offer</h5>
+        </div>
+        <div class="card-body">
+
+          {% if my_offer %}
+          <!-- Existing offer status -->
+          {% set offer_colors = {"pending": "warning", "accepted": "success", "declined": "secondary"} %}
+          <div class="text-center mb-3">
+            <span class="badge bg-{{ offer_colors.get(my_offer.status, 'secondary') }} fs-6 px-3">
+              {{ my_offer.status | capitalize }}
+            </span>
+          </div>
+          <div class="small text-muted">
+            <p class="mb-1"><strong>Units Offered:</strong> {{ my_offer.units_offered }}</p>
+            {% if my_offer.response_note %}
+            <p class="mb-1"><strong>Note:</strong> {{ my_offer.response_note }}</p>
+            {% endif %}
+            <p class="mb-0"><strong>Offered At:</strong>
+              {{ my_offer.offered_at.strftime("%d %b %Y") if my_offer.offered_at else "—" }}
+            </p>
+          </div>
+
+          {% elif doc.status in ("open", "offered") %}
+          <!-- Place new offer form -->
+          <form method="POST" action="{{ url_for('admin.exchange_place_offer', exchange_id=exchange_id) }}">
+            {{ offer_form.hidden_tag() }}
+            <div class="mb-3">
+              {{ offer_form.units_offered.label(class="form-label fw-semibold small") }}
+              {{ offer_form.units_offered(class="form-control form-control-sm" + (" is-invalid" if offer_form.units_offered.errors else ""), type="number", min="1", placeholder="e.g. 2") }}
+              {% for error in offer_form.units_offered.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="mb-3">
+              {{ offer_form.note.label(class="form-label fw-semibold small") }}
+              {{ offer_form.note(class="form-control form-control-sm", rows="2", placeholder="Optional note…") }}
+            </div>
+            {{ offer_form.submit(class="btn btn-danger w-100") }}
+          </form>
+
+          {% else %}
+          <p class="text-muted small mb-0">
+            This request is no longer open for new offers.
+          </p>
+          {% endif %}
+
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Exchange Status Summary -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light border-bottom">
+          <h5 class="mb-0"><i class="fa-solid fa-circle-info me-2"></i>Summary</h5>
+        </div>
+        <div class="card-body small text-muted">
+          <p class="mb-2"><strong>Status:</strong>
+            <span class="badge {{ status_colors.get(doc.status, 'bg-secondary') }}">
+              {{ doc.status | capitalize }}
+            </span>
+          </p>
+          <p class="mb-2"><strong>Total Offers:</strong> {{ doc.offers | length }}</p>
+          <p class="mb-0"><strong>Last Updated:</strong>
+            {{ doc.updated_at.strftime("%d %b %Y") if doc.updated_at else "—" }}
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

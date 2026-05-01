@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Blood Exchange Marketplace{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-5">
+
+  <!-- Header -->
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <h3 class="mb-1">
+        <i class="fa-solid fa-store me-2"></i>Blood Exchange Marketplace
+      </h3>
+      <p class="text-muted">Open blood supply broadcasts from partner hospitals.</p>
+    </div>
+    <div class="col-md-4 text-end">
+      <a href="{{ url_for('admin.exchange_my_requests') }}" class="btn btn-outline-danger btn-sm me-2">
+        <i class="fa-solid fa-tower-broadcast me-1"></i>My Broadcasts
+      </a>
+      <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-arrow-left me-1"></i>Dashboard
+      </a>
+    </div>
+  </div>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+
+  <!-- Marketplace Cards -->
+  {% if items %}
+  <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4 mb-4">
+    {% for item in items %}
+    {% set urgency_colors = {"routine": "bg-secondary", "urgent": "bg-warning text-dark", "critical": "bg-danger"} %}
+    {% set status_colors = {"open": "bg-success", "offered": "bg-info text-dark"} %}
+    <div class="col">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span class="badge bg-danger fs-6">{{ item.blood_group }}</span>
+          <span class="badge {{ urgency_colors.get(item.urgency, 'bg-secondary') }}">
+            {{ item.urgency | capitalize }}
+          </span>
+        </div>
+        <div class="card-body">
+          <h6 class="card-title mb-3">
+            <i class="fa-solid fa-hospital me-1 text-muted"></i>
+            {{ item.requester_hospital_name }}
+          </h6>
+          <div class="row g-2 small text-muted mb-3">
+            <div class="col-6">
+              <strong>Component:</strong><br>
+              {{ {"whole_blood": "Whole Blood", "plasma": "Plasma", "platelets": "Platelets"}.get(item.component_type, item.component_type) }}
+            </div>
+            <div class="col-6">
+              <strong>Units Needed:</strong><br>
+              {{ item.units_needed }}
+            </div>
+            <div class="col-6">
+              <strong>Required By:</strong><br>
+              {{ item.required_by_date.strftime("%d %b %Y") if item.required_by_date else "—" }}
+            </div>
+            <div class="col-6">
+              <strong>Offers So Far:</strong><br>
+              {{ item.offer_count }}
+            </div>
+          </div>
+          {% if item.notes %}
+          <p class="small text-muted mb-3">
+            <i class="fa-solid fa-note-sticky me-1"></i>{{ item.notes }}
+          </p>
+          {% endif %}
+          {% if item.my_offer %}
+          <div class="alert alert-info py-2 px-3 small mb-3">
+            <i class="fa-solid fa-check-circle me-1"></i>
+            You offered <strong>{{ item.my_offer.units_offered }}</strong> units
+            — {{ item.my_offer.status | capitalize }}
+          </div>
+          {% endif %}
+        </div>
+        <div class="card-footer bg-white border-top-0">
+          <a href="{{ url_for('admin.exchange_detail', exchange_id=item._id_str) }}"
+             class="btn btn-danger btn-sm w-100">
+            {% if item.my_offer %}
+              <i class="fa-solid fa-eye me-1"></i>View Details
+            {% else %}
+              <i class="fa-solid fa-hand-holding-medical me-1"></i>View &amp; Offer Supply
+            {% endif %}
+          </a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Pagination -->
+  {% if total_pages > 1 %}
+  <nav>
+    <ul class="pagination justify-content-center">
+      {% if page > 1 %}
+        <li class="page-item">
+          <a class="page-link" href="{{ url_for('admin.exchange_marketplace', page=page-1) }}">
+            <i class="fa-solid fa-chevron-left"></i>
+          </a>
+        </li>
+      {% endif %}
+      {% for p in range(1, total_pages + 1) %}
+        {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+          <li class="page-item {{ 'active' if p == page else '' }}">
+            <a class="page-link" href="{{ url_for('admin.exchange_marketplace', page=p) }}">{{ p }}</a>
+          </li>
+        {% elif p == page - 3 or p == page + 3 %}
+          <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+        {% endif %}
+      {% endfor %}
+      {% if page < total_pages %}
+        <li class="page-item">
+          <a class="page-link" href="{{ url_for('admin.exchange_marketplace', page=page+1) }}">
+            <i class="fa-solid fa-chevron-right"></i>
+          </a>
+        </li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+
+  {% else %}
+    <div class="text-center text-muted py-5">
+      <i class="fa-solid fa-store fa-3x mb-3 opacity-25"></i>
+      <p class="mb-1">No open broadcasts from other hospitals right now.</p>
+      <p class="small">Check back later or broadcast your own need.</p>
+      <a href="{{ url_for('admin.exchange_new') }}" class="btn btn-danger btn-sm mt-2">
+        <i class="fa-solid fa-plus me-1"></i>Create Broadcast
+      </a>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

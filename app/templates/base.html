@@ -50,7 +50,7 @@
               </li>
             {% endif %}
 
-            {% if current_user.role == "hospital_admin" %}
+            {% if current_user.role in ["admin", "superadmin"] %}
               <li class="nav-item">
                 <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
                   <i class="fa-solid fa-hospital me-1"></i>Admin Panel
@@ -60,6 +60,28 @@
                 <a class="nav-link" href="{{ url_for('admin.requests_list') }}">
                   <i class="fa-solid fa-file-medical me-1"></i>Blood Requests
                 </a>
+              </li>
+              <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                  <i class="fa-solid fa-arrows-left-right me-1"></i>Exchange
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li>
+                    <a class="dropdown-item" href="{{ url_for('admin.exchange_marketplace') }}">
+                      <i class="fa-solid fa-store me-2"></i>Marketplace
+                    </a>
+                  </li>
+                  <li>
+                    <a class="dropdown-item" href="{{ url_for('admin.exchange_my_requests') }}">
+                      <i class="fa-solid fa-tower-broadcast me-2"></i>My Broadcasts
+                    </a>
+                  </li>
+                  <li>
+                    <a class="dropdown-item" href="{{ url_for('admin.exchange_new') }}">
+                      <i class="fa-solid fa-plus me-2"></i>New Broadcast
+                    </a>
+                  </li>
+                </ul>
               </li>
             {% endif %}
 
