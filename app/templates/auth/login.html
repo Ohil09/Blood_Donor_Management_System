@@ -29,7 +29,13 @@
           <!-- Password -->
           <div class="mb-4">
             {{ form.password.label(class="form-label fw-semibold") }}
-            {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="Your password") }}
+            <div class="position-relative">
+              {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="Your password", id="password_field", type="password") }}
+              <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y" 
+                      id="toggle_password" style="text-decoration: none; z-index: 10;">
+                <i class="fa-solid fa-eye"></i>
+              </button>
+            </div>
             {% for error in form.password.errors %}
               <div class="invalid-feedback">{{ error }}</div>
             {% endfor %}
@@ -47,4 +53,23 @@
 
   </div>
 </div>
+
+<script>
+  // Toggle password visibility
+  document.getElementById('toggle_password').addEventListener('click', function(e) {
+    e.preventDefault();
+    const passwordField = document.getElementById('password_field');
+    const icon = this.querySelector('i');
+    
+    if (passwordField.type === 'password') {
+      passwordField.type = 'text';
+      icon.classList.remove('fa-eye');
+      icon.classList.add('fa-eye-slash');
+    } else {
+      passwordField.type = 'password';
+      icon.classList.remove('fa-eye-slash');
+      icon.classList.add('fa-eye');
+    }
+  });
+</script>
 {% endblock %}

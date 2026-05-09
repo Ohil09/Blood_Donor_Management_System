@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Edit Profile{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-danger text-white">
+          <h4 class="mb-0">
+            <i class="fa-solid fa-user-pen me-2"></i>Edit Profile
+          </h4>
+        </div>
+        <div class="card-body p-4">
+          <form method="POST">
+            {{ form.hidden_tag() }}
+
+            <!-- Full Name -->
+            <div class="mb-3">
+              <label class="form-label">Full Name</label>
+              {{ form.full_name(class="form-control",placeholder="Enter your full name") }}
+              {% if form.full_name.errors %}
+                <small class="text-danger">
+                  {% for error in form.full_name.errors %}{{ error }}{% endfor %}
+                </small>
+              {% endif %}
+            </div>
+
+            <!-- Age & Gender Row -->
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Age</label>
+                {{ form.age(class="form-control", type="number", placeholder="Enter your age") }}
+                {% if form.age.errors %}
+                  <small class="text-danger">
+                    {% for error in form.age.errors %}{{ error }}{% endfor %}
+                  </small>
+                {% endif %}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Gender</label>
+                {{ form.gender(class="form-select") }}
+                {% if form.gender.errors %}
+                  <small class="text-danger">
+                    {% for error in form.gender.errors %}{{ error }}{% endfor %}
+                  </small>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Blood Group & City Row -->
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Blood Group</label>
+                {{ form.blood_group(class="form-select") }}
+                {% if form.blood_group.errors %}
+                  <small class="text-danger">
+                    {% for error in form.blood_group.errors %}{{ error }}{% endfor %}
+                  </small>
+                {% endif %}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">City</label>
+                {{ form.city(class="form-control", placeholder="e.g., Mumbai") }}
+                {% if form.city.errors %}
+                  <small class="text-danger">
+                    {% for error in form.city.errors %}{{ error }}{% endfor %}
+                  </small>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Phone -->
+            <div class="mb-4">
+              <label class="form-label">Phone Number</label>
+              {{ form.phone(class="form-control", placeholder="10 digits of your phone number") }}
+              {% if form.phone.errors %}
+                <small class="text-danger">
+                  {% for error in form.phone.errors %}{{ error }}{% endfor %}
+                </small>
+              {% endif %}
+            </div>
+
+            <!-- Info Box -->
+            <div class="alert alert-info small mb-3">
+              <i class="fa-solid fa-info-circle me-2"></i>
+              <strong>Note:</strong> Email and password cannot be changed here.
+            </div>
+
+            <!-- Buttons -->
+            <div class="d-grid gap-2">
+              {{ form.submit(class="btn btn-danger") }}
+              <a href="{{ url_for('donor.dashboard') }}" class="btn btn-outline-secondary">
+                Cancel
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

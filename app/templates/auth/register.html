@@ -18,7 +18,7 @@
             <!-- Full Name -->
             <div class="mb-3">
               <label class="form-label">Full Name</label>
-              {{ form.full_name(class="form-control") }}
+              {{ form.full_name(class="form-control",placeholder="Enter your full name") }}
               {% if form.full_name.errors %}
                 <small class="text-danger">
                   {% for error in form.full_name.errors %}{{ error }}{% endfor %}
@@ -30,7 +30,7 @@
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label class="form-label">Age</label>
-                {{ form.age(class="form-control", type="number") }}
+                {{ form.age(class="form-control", type="number", placeholder="Enter your age") }}
                 {% if form.age.errors %}
                   <small class="text-danger">
                     {% for error in form.age.errors %}{{ error }}{% endfor %}
@@ -73,7 +73,7 @@
             <!-- Email -->
             <div class="mb-3">
               <label class="form-label">Email Address</label>
-              {{ form.email(class="form-control", type="email") }}
+              {{ form.email(class="form-control", type="email",placeholder="example@gmail.com") }}
               {% if form.email.errors %}
                 <small class="text-danger">
                   {% for error in form.email.errors %}{{ error }}{% endfor %}
@@ -84,7 +84,11 @@
             <!-- Phone -->
             <div class="mb-3">
               <label class="form-label">Phone Number</label>
-              {{ form.phone(class="form-control", placeholder="10 digits") }}
+
+              {{ form.phone(class="form-control", placeholder="10 digits of your phone number") }}
+
+            
+
               {% if form.phone.errors %}
                 <small class="text-danger">
                   {% for error in form.phone.errors %}{{ error }}{% endfor %}
@@ -95,7 +99,13 @@
             <!-- Password -->
             <div class="mb-3">
               <label class="form-label">Password</label>
-              {{ form.password(class="form-control", type="password") }}
+              <div class="position-relative">
+                {{ form.password(class="form-control", type="password", id="password_field") }}
+                <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y" 
+                        id="toggle_password" style="text-decoration: none; z-index: 10;">
+                  <i class="fa-solid fa-eye"></i>
+                </button>
+              </div>
               {% if form.password.errors %}
                 <small class="text-danger">
                   {% for error in form.password.errors %}{{ error }}{% endfor %}
@@ -106,7 +116,13 @@
             <!-- Confirm Password -->
             <div class="mb-3">
               <label class="form-label">Confirm Password</label>
-              {{ form.confirm(class="form-control", type="password") }}
+              <div class="position-relative">
+                {{ form.confirm(class="form-control", type="password", id="confirm_field") }}
+                <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y" 
+                        id="toggle_confirm" style="text-decoration: none; z-index: 10;">
+                  <i class="fa-solid fa-eye"></i>
+                </button>
+              </div>
               {% if form.confirm.errors %}
                 <small class="text-danger">
                   {% for error in form.confirm.errors %}{{ error }}{% endfor %}
@@ -130,4 +146,40 @@
     </div>
   </div>
 </div>
+
+<script>
+  // Toggle password visibility
+  document.getElementById('toggle_password').addEventListener('click', function(e) {
+    e.preventDefault();
+    const passwordField = document.getElementById('password_field');
+    const icon = this.querySelector('i');
+    
+    if (passwordField.type === 'password') {
+      passwordField.type = 'text';
+      icon.classList.remove('fa-eye');
+      icon.classList.add('fa-eye-slash');
+    } else {
+      passwordField.type = 'password';
+      icon.classList.remove('fa-eye-slash');
+      icon.classList.add('fa-eye');
+    }
+  });
+
+  // Toggle confirm password visibility
+  document.getElementById('toggle_confirm').addEventListener('click', function(e) {
+    e.preventDefault();
+    const confirmField = document.getElementById('confirm_field');
+    const icon = this.querySelector('i');
+    
+    if (confirmField.type === 'password') {
+      confirmField.type = 'text';
+      icon.classList.remove('fa-eye');
+      icon.classList.add('fa-eye-slash');
+    } else {
+      confirmField.type = 'password';
+      icon.classList.remove('fa-eye-slash');
+      icon.classList.add('fa-eye');
+    }
+  });
+</script>
 {% endblock %}
