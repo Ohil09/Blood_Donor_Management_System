@@ -50,18 +50,10 @@
               </li>
             {% endif %}
 
-            {% if current_user.role == "hospital_admin" %}
+            {% if current_user.role in ["admin", "hospital_admin", "superadmin"] %}
               <li class="nav-item">
                 <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
                   <i class="fa-solid fa-hospital me-1"></i>Admin Panel
-                </a>
-              </li>
-            {% endif %}
-
-            {% if current_user.role == "superadmin" %}
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('superadmin.dashboard') }}">
-                  <i class="fa-solid fa-shield me-1"></i>Super Admin
                 </a>
               </li>
             {% endif %}

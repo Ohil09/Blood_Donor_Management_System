@@ -15,6 +15,10 @@ class User(UserMixin):
         self.blood_group= user_doc.get("blood_group")
         self.city       = user_doc.get("city")
         self.hospital_id= user_doc.get("hospital_id")
+
+        # ✅ ADD THIS LINE
+        self.hospital_name = user_doc.get("hospital_name")
+
         self.is_active_account = user_doc.get("is_active", True)
 
     def get_id(self):
@@ -23,7 +27,11 @@ class User(UserMixin):
     @staticmethod
     def get_by_id(user_id):
         from bson import ObjectId
-        doc = db.users.find_one({"_id": ObjectId(user_id)})
+        try:
+            object_id = ObjectId(user_id)
+        except Exception:
+            return None
+        doc = db.users.find_one({"_id": object_id})
         return User(doc) if doc else None
 
     @staticmethod

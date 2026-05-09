@@ -84,7 +84,11 @@
             <!-- Phone -->
             <div class="mb-3">
               <label class="form-label">Phone Number</label>
+
               {{ form.phone(class="form-control", placeholder="10 digits of your phone number") }}
+
+            
+
               {% if form.phone.errors %}
                 <small class="text-danger">
                   {% for error in form.phone.errors %}{{ error }}{% endfor %}
