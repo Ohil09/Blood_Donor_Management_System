@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from app import db
+from app.forms.auth_forms import EditProfileForm
 from datetime import datetime, timedelta, timezone
 from bson import ObjectId
 
@@ -62,6 +63,54 @@ def dashboard():
 def profile():
     donor = db.users.find_one({"_id": ObjectId(current_user.id)})
     return render_template("donor/profile.html", donor=donor)
+
+
+# ── Edit Profile ──────────────────────────────────────────────
+@donor_bp.route("/edit-profile", methods=["GET", "POST"])
+@login_required
+@donor_required
+def edit_profile():
+    donor = db.users.find_one({"_id": ObjectId(current_user.id)})
+    form = EditProfileForm()
+
+    if form.validate_on_submit():
+        # Check if phone is already in use by another user
+        existing_phone = db.users.find_one({
+            "phone": form.phone.data,
+            "_id": {"$ne": ObjectId(current_user.id)}
+        })
+        
+        if existing_phone:
+            flash("Phone number already registered.", "danger")
+            return redirect(url_for("donor.edit_profile"))
+
+        # Update user document
+        db.users.update_one(
+            {"_id": ObjectId(current_user.id)},
+            {"$set": {
+                "full_name": form.full_name.data,
+                "age": form.age.data,
+                "gender": form.gender.data,
+                "blood_group": form.blood_group.data,
+                "city": form.city.data,
+                "phone": form.phone.data,
+                "updated_at": datetime.now(timezone.utc)
+            }}
+        )
+
+        flash("Profile updated successfully!", "success")
+        return redirect(url_for("donor.dashboard"))
+
+    elif request.method == "GET":
+        # Pre-fill form with current data
+        form.full_name.data = donor.get("full_name", "")
+        form.age.data = donor.get("age")
+        form.gender.data = donor.get("gender", "")
+        form.blood_group.data = donor.get("blood_group", "")
+        form.city.data = donor.get("city", "")
+        form.phone.data = donor.get("phone", "")
+
+    return render_template("donor/edit_profile.html", form=form, donor=donor)
 
 
 # ── History ──────────────────────────────────────────────────
