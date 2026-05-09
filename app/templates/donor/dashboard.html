@@ -34,13 +34,13 @@
               <i class="fa-solid fa-times-circle me-1"></i>NOT ELIGIBLE
             </span>
             <p class="mt-3 text-muted">
-              Eligible in <strong>{{ days_until_eligible }} days</strong>
+              Next eligible date: <strong>{{ next_eligible_display }}</strong>
             </p>
             <small class="text-muted">Last donation: {{ last_donation_display }}</small>
           {% endif %}
         </div>
+        </div>
       </div>
-    </div>
 
     <!-- ── Blood Group Card ── -->
     <div class="col-md-6">
@@ -124,6 +124,47 @@
       </div>
     </div>
   </div>
+
+  <!-- ── Recent Donations ── -->
+  {% if recent_donations %}
+  <div class="row mt-4">
+    <div class="col-md-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light border-bottom">
+          <h5 class="mb-0">
+            <i class="fa-solid fa-history me-2"></i>Recent Donations
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-sm table-hover">
+              <thead class="table-danger">
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Units</th>
+                  <th>Hospital</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for donation in recent_donations %}
+                  <tr>
+                    <td>{{ donation.donation_date_display }}</td>
+                    <td>
+                      <span class="badge bg-info">{{ donation.donation_type.replace('_', ' ')|title }}</span>
+                    </td>
+                    <td>{{ donation.units }}</td>
+                    <td>{{ donation.hospital_name or "N/A" }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
 </div>
 {% endblock %}
