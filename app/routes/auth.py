@@ -15,35 +15,37 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 def register():
     if current_user.is_authenticated:
         return redirect(url_for("auth.login"))
+    
     form = RegistrationForm()
     
     if form.validate_on_submit():
+        email = form.email.data.strip().lower()
+        phone = form.phone.data.strip()
+
         # Check duplicate email
-        existing_email = db.users.find_one({"email": form.email.data})
+        existing_email = db.users.find_one({"email": email})
         if existing_email:
             flash("Email already registered.", "danger")
             return redirect(url_for("auth.register"))
         
         # Check duplicate phone
-        existing_phone = db.users.find_one({"phone": form.phone.data})
+        existing_phone = db.users.find_one({"phone": phone})
         if existing_phone:
             flash("Phone number already registered.", "danger")
             return redirect(url_for("auth.register"))
         
         # Generate donor ID
-        from app.services.donor_id_service import generate_donor_id
         donor_id = generate_donor_id()
         
         # Hash password
-        from werkzeug.security import generate_password_hash
         password_hash = generate_password_hash(form.password.data)
         
         # Insert donor WITHOUT hospital_id
         db.users.insert_one({
             "donor_id": donor_id,
             "full_name": form.full_name.data,
-            "email": form.email.data,
-            "phone": form.phone.data,
+            "email": email,
+            "phone": phone,
             "age": form.age.data,
             "gender": form.gender.data,
             "blood_group": form.blood_group.data,
@@ -78,7 +80,7 @@ def login():
         doc = db.users.find_one({
             "$or": [
                 {"donor_id": login_id},
-                {"email":    login_id.lower()}
+                {"email": login_id.lower()}
             ]
         })
 
@@ -107,10 +109,6 @@ def logout():
 def _redirect_by_role(role):
     if role == "donor":
         return redirect(url_for("donor.dashboard"))
-    elif role in ["admin", "superadmin"]:
-        return redirect(url_for("admin.dashboard"))   # temp until donor bp exists
-    elif role == "hospital_admin":
-        return redirect(url_for("auth.login"))   # temp until admin bp exists
-    elif role == "superadmin":
-        return redirect(url_for("auth.login"))   # temp until superadmin bp exists
+    elif role in ["admin", "hospital_admin", "superadmin"]:
+        return redirect(url_for("admin.dashboard"))
     return redirect(url_for("auth.login"))
