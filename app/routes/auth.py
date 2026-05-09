@@ -14,12 +14,7 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 @auth_bp.route("/register", methods=["GET", "POST"])
 def register():
     if current_user.is_authenticated:
-
-
-
         return _redirect_by_role(current_user.role)
-    
-
     form = RegistrationForm()
     
     if form.validate_on_submit():
@@ -56,10 +51,12 @@ def register():
             "city": form.city.data,
             "password_hash": password_hash,
             "role": "donor",
-            "hospital_id": None,  # ✅ NOT ASSIGNED YET
+            "hospital_id": None,
             "created_at": datetime.now(timezone.utc),
             "is_active": True,
             "last_donation_date": None,
+            "next_eligible_date": None,
+            "donation_count": 0,
         })
         
         flash(f"✅ Registration successful! Your Donor ID is {donor_id}. Please wait for admin approval to access full features.", "success")
