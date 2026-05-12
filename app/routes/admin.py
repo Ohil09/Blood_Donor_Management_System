@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
-from flask_login import login_required, current_user
+from flask_login import login_required, current_user, logout_user
 from app import db
 from app.models.inventory import Inventory
 from app.services.inventory_service import InventoryService
@@ -12,7 +12,7 @@ from app.services.request_service import RequestService
 from app.utils.auth_utils import get_current_hospital_id, get_current_hospital_info
 from app.services.donation_service import DonationService
 from app.forms.donation_forms import ConfirmDonationForm
-
+from flask_login import login_required, current_user, logout_user
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 
@@ -37,10 +37,19 @@ def dashboard():
     
     # Get admin's hospital_id from user document
     admin_user = db.users.find_one({"_id": ObjectId(current_user.id)})
+    if not admin_user:
+        flash("Your account could not be loaded. Please log in again.", "danger")
+        logout_user()
+        return redirect(url_for("auth.login"))
+
+    if current_user.role == "superadmin":
+        return redirect(url_for("superadmin.dashboard"))
+
     hospital_id = admin_user.get("hospital_id")
     
     if not hospital_id:
         flash("Hospital not assigned to your account.", "warning")
+        logout_user()
         return redirect(url_for("auth.login"))
     
     # Get inventory for this hospital
