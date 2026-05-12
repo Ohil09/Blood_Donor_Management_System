@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center">
+    <h2>Cross-Hospital Exchange Requests</h2>
+    <a class="btn btn-primary" href="{{ url_for('admin.exchange_request_new') }}">New Exchange Request</a>
+  </div>
+
+  <form class="row mt-3 mb-3" method="GET">
+    <div class="col-md-3">
+      <select class="form-select" name="scope">
+        <option value="all" {% if scope == "all" %}selected{% endif %}>All</option>
+        <option value="inbound" {% if scope == "inbound" %}selected{% endif %}>Inbound (To My Hospital)</option>
+        <option value="outbound" {% if scope == "outbound" %}selected{% endif %}>Outbound (From My Hospital)</option>
+      </select>
+    </div>
+    <div class="col-md-3">
+      <input class="form-control" name="status" placeholder="status (pending/approved/...)" value="{{ status }}">
+    </div>
+    <div class="col-md-2">
+      <input class="form-control" name="blood_group" placeholder="blood group" value="{{ blood_group }}">
+    </div>
+    <div class="col-md-2">
+      <button class="btn btn-outline-primary w-100" type="submit">Filter</button>
+    </div>
+    <div class="col-md-2">
+      <a class="btn btn-outline-secondary w-100" href="{{ url_for('admin.exchange_requests_list') }}">Clear</a>
+    </div>
+  </form>
+
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Direction</th>
+        <th>From</th>
+        <th>To</th>
+        <th>Blood Group</th>
+        <th>Units</th>
+        <th>Urgency</th>
+        <th>Status</th>
+        <th>Created</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in requests %}
+      <tr>
+        <td>
+          {% if r.source_hospital_id == hospital_id %}
+            Outbound
+          {% else %}
+            Inbound
+          {% endif %}
+        </td>
+        <td>{{ r.source_hospital_name }} ({{ r.source_hospital_id }})</td>
+        <td>{{ r.target_hospital_name }} ({{ r.target_hospital_id }})</td>
+        <td>{{ r.blood_group }}</td>
+        <td>{{ r.units_required }}</td>
+        <td>{{ r.urgency }}</td>
+        <td>{{ r.status }}</td>
+        <td>{{ r.created_at }}</td>
+        <td>
+          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.exchange_request_detail', exchange_request_id=r._id) }}">View</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if total_pages > 1 %}
+  <nav>
+    <ul class="pagination">
+      {% for p in range(1, total_pages + 1) %}
+      <li class="page-item {% if p == page %}active{% endif %}">
+        <a class="page-link" href="{{ url_for('admin.exchange_requests_list', page=p, scope=scope, status=status, blood_group=blood_group) }}">{{ p }}</a>
+      </li>
+      {% endfor %}
+    </ul>
+  </nav>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h2>Exchange Request Details</h2>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <p><b>Status:</b> {{ req.status }}</p>
+      <p><b>From:</b> {{ req.source_hospital_name }} ({{ req.source_hospital_id }})</p>
+      <p><b>To:</b> {{ req.target_hospital_name }} ({{ req.target_hospital_id }})</p>
+      <p><b>Blood Group:</b> {{ req.blood_group }}</p>
+      <p><b>Units Required:</b> {{ req.units_required }}</p>
+      <p><b>Urgency:</b> {{ req.urgency }}</p>
+      <p><b>Preferred Fulfillment Date:</b> {{ req.preferred_fulfillment_date }}</p>
+      <p><b>Source Available Units:</b> {{ source_available_units }}</p>
+      <p><b>Target Available Units:</b> {{ target_available_units }}</p>
+      {% if req.patient_name %}<p><b>Patient:</b> {{ req.patient_name }}</p>{% endif %}
+      {% if req.notes %}<p><b>Notes:</b> {{ req.notes }}</p>{% endif %}
+    </div>
+  </div>
+
+  <div class="mb-3">
+    {% if actor_role == "target" and req.status == "pending" %}
+      <form method="POST" action="{{ url_for('admin.exchange_request_approve', exchange_request_id=req._id) }}" style="display:inline;">
+        {{ approve_form.hidden_tag() }}
+        <button class="btn btn-success" type="submit">Approve</button>
+      </form>
+      <form method="POST" action="{{ url_for('admin.exchange_request_reject', exchange_request_id=req._id) }}" style="display:inline;">
+        {{ reject_form.hidden_tag() }}
+        <button class="btn btn-danger" type="submit">Reject</button>
+      </form>
+    {% endif %}
+
+    {% if actor_role == "source" and req.status in ["pending", "approved"] %}
+      <form method="POST" action="{{ url_for('admin.exchange_request_cancel', exchange_request_id=req._id) }}" style="display:inline;">
+        {{ cancel_form.hidden_tag() }}
+        <button class="btn btn-outline-secondary" type="submit">Cancel</button>
+      </form>
+    {% endif %}
+
+    {% if actor_role == "target" and req.status == "approved" %}
+      <form method="POST" action="{{ url_for('admin.exchange_request_fulfill', exchange_request_id=req._id) }}" style="display:inline;">
+        {{ fulfill_form.hidden_tag() }}
+        <button class="btn btn-primary" type="submit">Fulfill and Transfer Units</button>
+      </form>
+    {% endif %}
+
+    <a class="btn btn-link" href="{{ url_for('admin.exchange_requests_list') }}">Back to list</a>
+  </div>
+
+  <h5>Audit Trail</h5>
+  <ul>
+    {% for a in req.audit %}
+      <li>{{ a.at }} — {{ a.action }} — {{ a.actor_id }} {% if a.note %} ({{ a.note }}){% endif %}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

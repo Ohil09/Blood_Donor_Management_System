@@ -7,8 +7,8 @@ from app.forms.inventory_forms import AddStockForm, DepleteStockForm, SearchInve
 from datetime import datetime, timezone
 from bson import ObjectId
 from app.services.assignment_service import AssignmentService
-from app.forms.request_form import CreateRequestForm, RequestActionForm
-from app.services.request_service import RequestService
+from app.forms.exchange_forms import CreateExchangeRequestForm, ExchangeActionForm
+from app.services.exchange_service import ExchangeService
 from app.utils.auth_utils import get_current_hospital_id, get_current_hospital_info
 from app.services.donation_service import DonationService
 from app.forms.donation_forms import ConfirmDonationForm
@@ -321,58 +321,74 @@ def assign_donor(donor_id):
     
     return redirect(url_for("admin.unassigned_donors"))
 
-@admin_bp.route("/requests")
+# ── Inter-Hospital Exchange Requests ────────────────────────────────────────
+@admin_bp.route("/exchange/requests")
 @login_required
 @admin_required
-def requests_list():
+def exchange_requests_list():
     hospital_id = get_current_hospital_id()
     if not hospital_id:
         flash("Hospital not assigned to your account.", "warning")
         return redirect(url_for("admin.dashboard"))
+
+    scope = request.args.get("scope", "all").strip().lower()
+    if scope not in {"all", "inbound", "outbound"}:
+        scope = "all"
 
     status = request.args.get("status", "").strip() or None
     blood_group = request.args.get("blood_group", "").strip() or None
     page = request.args.get("page", 1, type=int)
     per_page = 10
 
-    items, total = RequestService.list_requests(db, hospital_id, status=status, blood_group=blood_group, page=page, per_page=per_page)
+    items, total = ExchangeService.list_requests(
+        db,
+        hospital_id=hospital_id,
+        scope=scope,
+        status=status,
+        blood_group=blood_group,
+        page=page,
+        per_page=per_page,
+    )
     total_pages = (total + per_page - 1) // per_page
 
     return render_template(
-        "admin/requests_list.html",
+        "admin/exchange_requests_list.html",
         requests=items,
         page=page,
         total_pages=total_pages,
         total=total,
+        scope=scope,
         status=status or "",
-        blood_group=blood_group or ""
+        blood_group=blood_group or "",
+        hospital_id=hospital_id,
     )
 
 
-@admin_bp.route("/requests/new", methods=["GET", "POST"])
+@admin_bp.route("/exchange/requests/new", methods=["GET", "POST"])
 @login_required
 @admin_required
-def request_new():
+def exchange_request_new():
     hospital_id, hospital_name = get_current_hospital_info()
     if not hospital_id:
         flash("Hospital not assigned to your account.", "warning")
         return redirect(url_for("admin.dashboard"))
 
-    form = CreateRequestForm()
+    form = CreateExchangeRequestForm()
+    hospitals = list(
+        db.hospitals.find({"hospital_id": {"$ne": str(hospital_id)}}).sort("name", 1)
+    )
+    form.target_hospital_id.choices = [
+        (h["hospital_id"], f"{h['name']} ({h['hospital_id']})")
+        for h in hospitals
+        if h.get("hospital_id") and h.get("name")
+    ]
 
     if form.validate_on_submit():
-        # Live inventory check
-        inventory = Inventory.get_by_hospital(hospital_id, db)
-        if not inventory:
-            flash("Inventory not initialized for this hospital.", "danger")
-            return redirect(url_for("admin.dashboard"))
-
-        available_units = inventory.get_stock(form.blood_group.data)
-
-        doc = RequestService.create_request(
+        ok, msg, doc = ExchangeService.create_exchange_request(
             db=db,
-            hospital_id=hospital_id,
-            hospital_name=hospital_name or "Unknown Hospital",
+            source_hospital_id=hospital_id,
+            source_hospital_name=hospital_name or "Unknown Hospital",
+            target_hospital_id=form.target_hospital_id.data,
             created_by=current_user.id,
             blood_group=form.blood_group.data,
             units_required=form.units_required.data,
@@ -380,148 +396,149 @@ def request_new():
             preferred_fulfillment_date=form.preferred_fulfillment_date.data,
             patient_name=form.patient_name.data,
             notes=form.notes.data,
-            available_units=available_units
         )
+        flash(msg, "success" if ok else "danger")
+        if ok:
+            return redirect(
+                url_for(
+                    "admin.exchange_request_detail",
+                    exchange_request_id=str(doc["_id"]),
+                )
+            )
 
-        if doc["status"] == "awaiting_approval":
-            flash("Request submitted. Stock is available and units have been provisionally reserved (awaiting admin approval).", "success")
-        else:
-            flash("Request submitted. Stock is currently insufficient; please match donors.", "info")
-
-        return redirect(url_for("admin.request_detail", request_id=str(doc["_id"])))
-
-    return render_template("admin/request_new.html", form=form)
+    return render_template(
+        "admin/exchange_request_new.html",
+        form=form,
+        has_hospitals=bool(form.target_hospital_id.choices),
+    )
 
 
-@admin_bp.route("/requests/<request_id>")
+@admin_bp.route("/exchange/requests/<exchange_request_id>")
 @login_required
 @admin_required
-def request_detail(request_id):
+def exchange_request_detail(exchange_request_id):
     hospital_id = get_current_hospital_id()
     if not hospital_id:
         flash("Hospital not assigned to your account.", "warning")
         return redirect(url_for("admin.dashboard"))
 
-    req = RequestService.get_request(db, request_id, hospital_id=hospital_id)
+    req = ExchangeService.get_request(db, exchange_request_id, hospital_id=hospital_id)
     if not req:
-        flash("Request not found.", "danger")
-        return redirect(url_for("admin.requests_list"))
+        flash("Exchange request not found.", "danger")
+        return redirect(url_for("admin.exchange_requests_list"))
 
-    # Inventory snapshot
-    inventory = Inventory.get_by_hospital(hospital_id, db)
-    available_units = inventory.get_stock(req["blood_group"]) if inventory else 0
+    actor_role = ExchangeService.get_actor_role(req, hospital_id)
+    source_inventory = Inventory.get_by_hospital(req["source_hospital_id"], db)
+    target_inventory = Inventory.get_by_hospital(req["target_hospital_id"], db)
+    source_available_units = source_inventory.get_stock(req["blood_group"]) if source_inventory else 0
+    target_available_units = target_inventory.get_stock(req["blood_group"]) if target_inventory else 0
 
-    # Donor matching (screen-only)
-    matching_donors = list(
-        db.users.find({
-            "role": "donor",
-            "blood_group": req["blood_group"],
-            # optionally limit to same hospital:
-            # "hospital_id": str(hospital_id)
-        }).sort("created_at", -1).limit(50)
-    )
-
-    # Action forms (CSRF)
-    approve_form = RequestActionForm()
-    reject_form = RequestActionForm()
-    cancel_form = RequestActionForm()
-    fulfill_form = RequestActionForm()
+    approve_form = ExchangeActionForm()
+    reject_form = ExchangeActionForm()
+    cancel_form = ExchangeActionForm()
+    fulfill_form = ExchangeActionForm()
 
     return render_template(
-        "admin/request_detail.html",
+        "admin/exchange_request_detail.html",
         req=req,
-        available_units=available_units,
-        matching_donors=matching_donors,
+        actor_role=actor_role,
+        source_available_units=source_available_units,
+        target_available_units=target_available_units,
         approve_form=approve_form,
         reject_form=reject_form,
         cancel_form=cancel_form,
-        fulfill_form=fulfill_form
+        fulfill_form=fulfill_form,
     )
 
 
-@admin_bp.route("/requests/<request_id>/approve", methods=["POST"])
+@admin_bp.route("/exchange/requests/<exchange_request_id>/approve", methods=["POST"])
 @login_required
 @admin_required
-def request_approve(request_id):
-    form = RequestActionForm()
+def exchange_request_approve(exchange_request_id):
+    form = ExchangeActionForm()
     if not form.validate_on_submit():
         flash("Invalid request.", "danger")
-        return redirect(url_for("admin.request_detail", request_id=request_id))
+        return redirect(url_for("admin.exchange_request_detail", exchange_request_id=exchange_request_id))
 
-    hospital_id = get_current_hospital_id()
-    req = RequestService.get_request(db, request_id, hospital_id=hospital_id)
+    hospital_id, hospital_name = get_current_hospital_info()
+    req = ExchangeService.get_request(db, exchange_request_id, hospital_id=hospital_id)
     if not req:
-        flash("Request not found.", "danger")
-        return redirect(url_for("admin.requests_list"))
-
-    ok, msg = RequestService.approve_request(db, req, current_user.id)
-    flash(msg, "success" if ok else "warning")
-    return redirect(url_for("admin.request_detail", request_id=request_id))
-
-
-@admin_bp.route("/requests/<request_id>/reject", methods=["POST"])
-@login_required
-@admin_required
-def request_reject(request_id):
-    form = RequestActionForm()
-    if not form.validate_on_submit():
-        flash("Invalid request.", "danger")
-        return redirect(url_for("admin.request_detail", request_id=request_id))
-
-    hospital_id = get_current_hospital_id()
-    req = RequestService.get_request(db, request_id, hospital_id=hospital_id)
-    if not req:
-        flash("Request not found.", "danger")
-        return redirect(url_for("admin.requests_list"))
-
-    ok, msg = RequestService.reject_request(db, req, current_user.id)
-    flash(msg, "success" if ok else "warning")
-    return redirect(url_for("admin.request_detail", request_id=request_id))
-
-
-@admin_bp.route("/requests/<request_id>/cancel", methods=["POST"])
-@login_required
-@admin_required
-def request_cancel(request_id):
-    form = RequestActionForm()
-    if not form.validate_on_submit():
-        flash("Invalid request.", "danger")
-        return redirect(url_for("admin.request_detail", request_id=request_id))
-
-    hospital_id = get_current_hospital_id()
-    req = RequestService.get_request(db, request_id, hospital_id=hospital_id)
-    if not req:
-        flash("Request not found.", "danger")
-        return redirect(url_for("admin.requests_list"))
-
-    ok, msg = RequestService.cancel_request(db, req, current_user.id)
-    flash(msg, "success" if ok else "warning")
-    return redirect(url_for("admin.request_detail", request_id=request_id))
-
-
-@admin_bp.route("/requests/<request_id>/fulfill", methods=["POST"])
-@login_required
-@admin_required
-def request_fulfill(request_id):
-    form = RequestActionForm()
-    if not form.validate_on_submit():
-        flash("Invalid request.", "danger")
-        return redirect(url_for("admin.request_detail", request_id=request_id))
-
-    hospital_id = get_current_hospital_id()
-    req = RequestService.get_request(db, request_id, hospital_id=hospital_id)
-    if not req:
-        flash("Request not found.", "danger")
-        return redirect(url_for("admin.requests_list"))
+        flash("Exchange request not found.", "danger")
+        return redirect(url_for("admin.exchange_requests_list"))
 
     inventory = Inventory.get_by_hospital(hospital_id, db)
     if not inventory:
-        flash("Inventory not initialized.", "danger")
-        return redirect(url_for("admin.request_detail", request_id=request_id))
+        Inventory.init_for_hospital(hospital_id, hospital_name or "Unknown Hospital", db)
+        inventory = Inventory.get_by_hospital(hospital_id, db)
 
-    ok, msg = RequestService.fulfill_request(db, req, current_user.id, inventory)
+    ok, msg = ExchangeService.approve_request(db, req, current_user.id, hospital_id, inventory)
+    flash(msg, "success" if ok else "warning")
+    return redirect(url_for("admin.exchange_request_detail", exchange_request_id=exchange_request_id))
+
+
+@admin_bp.route("/exchange/requests/<exchange_request_id>/reject", methods=["POST"])
+@login_required
+@admin_required
+def exchange_request_reject(exchange_request_id):
+    form = ExchangeActionForm()
+    if not form.validate_on_submit():
+        flash("Invalid request.", "danger")
+        return redirect(url_for("admin.exchange_request_detail", exchange_request_id=exchange_request_id))
+
+    hospital_id = get_current_hospital_id()
+    req = ExchangeService.get_request(db, exchange_request_id, hospital_id=hospital_id)
+    if not req:
+        flash("Exchange request not found.", "danger")
+        return redirect(url_for("admin.exchange_requests_list"))
+
+    ok, msg = ExchangeService.reject_request(db, req, current_user.id, hospital_id)
+    flash(msg, "success" if ok else "warning")
+    return redirect(url_for("admin.exchange_request_detail", exchange_request_id=exchange_request_id))
+
+
+@admin_bp.route("/exchange/requests/<exchange_request_id>/cancel", methods=["POST"])
+@login_required
+@admin_required
+def exchange_request_cancel(exchange_request_id):
+    form = ExchangeActionForm()
+    if not form.validate_on_submit():
+        flash("Invalid request.", "danger")
+        return redirect(url_for("admin.exchange_request_detail", exchange_request_id=exchange_request_id))
+
+    hospital_id = get_current_hospital_id()
+    req = ExchangeService.get_request(db, exchange_request_id, hospital_id=hospital_id)
+    if not req:
+        flash("Exchange request not found.", "danger")
+        return redirect(url_for("admin.exchange_requests_list"))
+
+    ok, msg = ExchangeService.cancel_request(db, req, current_user.id, hospital_id)
+    flash(msg, "success" if ok else "warning")
+    return redirect(url_for("admin.exchange_request_detail", exchange_request_id=exchange_request_id))
+
+
+@admin_bp.route("/exchange/requests/<exchange_request_id>/fulfill", methods=["POST"])
+@login_required
+@admin_required
+def exchange_request_fulfill(exchange_request_id):
+    form = ExchangeActionForm()
+    if not form.validate_on_submit():
+        flash("Invalid request.", "danger")
+        return redirect(url_for("admin.exchange_request_detail", exchange_request_id=exchange_request_id))
+
+    hospital_id, hospital_name = get_current_hospital_info()
+    req = ExchangeService.get_request(db, exchange_request_id, hospital_id=hospital_id)
+    if not req:
+        flash("Exchange request not found.", "danger")
+        return redirect(url_for("admin.exchange_requests_list"))
+
+    target_inventory = Inventory.get_by_hospital(hospital_id, db)
+    if not target_inventory:
+        Inventory.init_for_hospital(hospital_id, hospital_name or "Unknown Hospital", db)
+        target_inventory = Inventory.get_by_hospital(hospital_id, db)
+
+    ok, msg = ExchangeService.fulfill_request(db, req, current_user.id, hospital_id, target_inventory)
     flash(msg, "success" if ok else "danger")
-    return redirect(url_for("admin.request_detail", request_id=request_id))
+    return redirect(url_for("admin.exchange_request_detail", exchange_request_id=exchange_request_id))
 
 
 # ── Reassign Donor ───────────────────────────────────────────
