@@ -52,7 +52,7 @@ class RegistrationForm(FlaskForm):
     submit = SubmitField("Register as Donor")
 
 class LoginForm(FlaskForm):
-    login_id  = StringField("Donor ID / Admin ID",
+    login_id  = StringField("Donor ID / Hospital ID / Email",
                   validators=[DataRequired()])
     password  = PasswordField("Password",
                   validators=[DataRequired()])
