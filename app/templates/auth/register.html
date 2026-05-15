@@ -84,7 +84,11 @@
             <!-- Phone -->
             <div class="mb-3">
               <label class="form-label">Phone Number</label>
+<<<<<<<<< Temporary merge branch 1
+              {{ form.phone(class="form-control", placeholder="10 digits") }}
+=========
               {{ form.phone(class="form-control", placeholder="10 digits of your phone number") }}
+>>>>>>>>> Temporary merge branch 2
               {% if form.phone.errors %}
                 <small class="text-danger">
                   {% for error in form.phone.errors %}{{ error }}{% endfor %}

@@ -4,6 +4,14 @@ from app.models.inventory import Inventory
 
 class InventoryService:
     """Service layer for inventory operations"""
+
+    @staticmethod
+    def _to_utc_aware(value):
+        if not value or not isinstance(value, datetime):
+            return None
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
     
     @staticmethod
     def get_or_create_inventory(hospital_id, hospital_name, db):
@@ -38,24 +46,30 @@ class InventoryService:
     
     @staticmethod
     def is_donor_eligible(donor_doc):
-        """Check if donor is eligible based on last donation date"""
-        last_donation = donor_doc.get("last_donation_date")
-        
+        """Check if donor is eligible based on next_eligible_date or last donation"""
+        next_eligible = InventoryService._to_utc_aware(donor_doc.get("next_eligible_date"))
+        if next_eligible:
+            return datetime.now(timezone.utc) >= next_eligible
+
+        last_donation = InventoryService._to_utc_aware(donor_doc.get("last_donation_date"))
         if not last_donation:
-            return True  # Never donated = eligible
-        
-        # 56 days for whole blood
+            return True
+
         next_eligible_date = last_donation + timedelta(days=56)
         return datetime.now(timezone.utc) >= next_eligible_date
     
     @staticmethod
     def get_days_until_eligible(donor_doc):
         """Get days until donor is eligible again"""
-        last_donation = donor_doc.get("last_donation_date")
-        
+        next_eligible = InventoryService._to_utc_aware(donor_doc.get("next_eligible_date"))
+        if next_eligible:
+            days_left = (next_eligible - datetime.now(timezone.utc)).days
+            return max(0, days_left)
+
+        last_donation = InventoryService._to_utc_aware(donor_doc.get("last_donation_date"))
         if not last_donation:
             return 0
-        
+
         next_eligible_date = last_donation + timedelta(days=56)
         days_left = (next_eligible_date - datetime.now(timezone.utc)).days
         return max(0, days_left)

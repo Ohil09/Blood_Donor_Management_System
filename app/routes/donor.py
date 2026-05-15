@@ -8,6 +8,14 @@ from bson import ObjectId
 donor_bp = Blueprint("donor", __name__, url_prefix="/donor")
 
 
+def _to_utc_aware(value):
+    if not value or not isinstance(value, datetime):
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 # ── Check role is donor ──────────────────────────────────────
 def donor_required(f):
     from functools import wraps
@@ -25,25 +33,36 @@ def donor_required(f):
 @login_required
 @donor_required
 def dashboard():
-    # Get donor document
     donor = db.users.find_one({"_id": ObjectId(current_user.id)})
+    last_donation = _to_utc_aware(donor.get("last_donation_date"))
+    next_eligible = _to_utc_aware(donor.get("next_eligible_date"))
 
-    # Calculate eligibility
-    last_donation = donor.get("last_donation_date")
     is_eligible = True
     days_until_eligible = 0
+    now_utc = datetime.now(timezone.utc)
 
-    if last_donation:
-        # 56 days for whole blood (simplest rule)
-        next_eligible_date = last_donation + timedelta(days=56)
-        days_until_eligible = (next_eligible_date - datetime.now(timezone.utc)).days
+    if next_eligible:
+        days_until_eligible = (next_eligible - now_utc).days
+        is_eligible = days_until_eligible <= 0
+    elif last_donation:
+        next_eligible = last_donation + timedelta(days=56)
+        days_until_eligible = (next_eligible - now_utc).days
         is_eligible = days_until_eligible <= 0
 
-    # Get donation count
-    donation_count = db.donations.count_documents({"donor_id": current_user.donor_id})
-
-    # Get last donation date for display
     last_donation_display = last_donation.strftime("%d %b %Y") if last_donation else "Never"
+    next_eligible_display = next_eligible.strftime("%d %b %Y") if next_eligible else "Now"
+
+    donor_id = donor.get("donor_id")
+    donation_count = db.donations.count_documents({"donor_id": donor_id}) if donor_id else 0
+
+    recent_donations = list(
+        db.donations.find({"donor_id": donor_id} if donor_id else {})
+        .sort("donation_date", -1)
+        .limit(5)
+    ) if donor_id else []
+
+    for donation in recent_donations:
+        donation["donation_date_display"] = donation["donation_date"].strftime("%d %b %Y")
 
     context = {
         "donor": donor,
@@ -51,6 +70,8 @@ def dashboard():
         "days_until_eligible": max(0, days_until_eligible),
         "donation_count": donation_count,
         "last_donation_display": last_donation_display,
+        "next_eligible_display": next_eligible_display,
+        "recent_donations": recent_donations,
     }
 
     return render_template("donor/dashboard.html", **context)
@@ -118,21 +139,31 @@ def edit_profile():
 @login_required
 @donor_required
 def history():
-    # Get all donations for this donor (paginated)
+    donor = db.users.find_one({"_id": ObjectId(current_user.id)})
+    donor_id = donor.get("donor_id")
+
     page = request.args.get("page", 1, type=int)
     per_page = 10
 
+    if not donor_id:
+        context = {
+            "donations": [],
+            "page": 1,
+            "total_pages": 0,
+            "total_donations": 0,
+        }
+        return render_template("donor/history.html", **context)
+
     donations = list(
-        db.donations.find({"donor_id": current_user.donor_id})
-        .sort("donation_date", -1)  # newest first
+        db.donations.find({"donor_id": donor_id})
+        .sort("donation_date", -1)
         .skip((page - 1) * per_page)
         .limit(per_page)
     )
 
-    total_donations = db.donations.count_documents({"donor_id": current_user.donor_id})
+    total_donations = db.donations.count_documents({"donor_id": donor_id})
     total_pages = (total_donations + per_page - 1) // per_page
 
-    # Format dates
     for donation in donations:
         donation["donation_date_display"] = donation["donation_date"].strftime("%d %b %Y, %I:%M %p")
 

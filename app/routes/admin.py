@@ -10,6 +10,8 @@ from app.services.assignment_service import AssignmentService
 from app.forms.request_form import CreateRequestForm, RequestActionForm
 from app.services.request_service import RequestService
 from app.utils.auth_utils import get_current_hospital_id, get_current_hospital_info
+from app.services.donation_service import DonationService
+from app.forms.donation_forms import ConfirmDonationForm
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -537,3 +539,45 @@ def reassign_donor(donor_id):
         flash(message, "danger")
     
     return redirect(url_for("admin.donors"))
+
+# ── Confirm Donation (Module 4) ─────────────────────────────────────────
+@admin_bp.route("/donations/confirm", methods=["GET", "POST"])
+@login_required
+@admin_required
+def confirm_donation():
+    hospital_id, hospital_name = get_current_hospital_info()
+    if not hospital_id:
+        flash("Hospital not assigned to your account.", "warning")
+        return redirect(url_for("admin.dashboard"))
+
+    form = ConfirmDonationForm()
+    if form.validate_on_submit():
+        donor_id = form.donor_id.data.strip().upper()
+        donor = db.users.find_one({
+            "donor_id": donor_id,
+            "role": "donor",
+            "hospital_id": hospital_id,
+            "is_active": True
+        })
+        if not donor:
+            flash("Donor not found in your hospital.", "danger")
+            return render_template("admin/confirm_donation.html", form=form)
+
+        summary = DonationService.record_donation(
+            db=db,
+            donor_doc=donor,
+            hospital_id=hospital_id,
+            hospital_name=hospital_name or "Unknown Hospital",
+            actor_id=current_user.id,
+            donation_type=form.donation_type.data,
+            units=form.units.data,
+            note=form.note.data
+        )
+
+        flash(
+            f"Donation recorded for {donor_id}. Next eligibility: {summary['next_eligible_date'].strftime('%d %b %Y')}.",
+            "success"
+        )
+        return redirect(url_for("admin.donors"))
+
+    return render_template("admin/confirm_donation.html", form=form)

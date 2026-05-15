@@ -2,6 +2,7 @@ from flask import Flask
 from pymongo import MongoClient
 from app.config import config
 from app.extensions import login_manager, mail, csrf
+from app.services.donation_service import DonationService
 
 # Global db reference — imported by models and routes
 db = None
@@ -30,6 +31,8 @@ def create_app(config_name="development"):
     from app.routes.auth import auth_bp
     from app.routes.donor import donor_bp
     from app.routes.admin import admin_bp
+    from app.services.donation_service import DonationService
+    DonationService.ensure_indexes(db)
     app.register_blueprint(auth_bp)
     app.register_blueprint(donor_bp)
     app.register_blueprint(admin_bp)
