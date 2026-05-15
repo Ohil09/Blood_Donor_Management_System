@@ -8,6 +8,7 @@ import string
 from app import db
 from app.forms.superadmin_forms import CreateHospitalForm
 from app.services.hospital_id_service import generate_hospital_id
+from app.services.email_service import EmailService
 
 superadmin_bp = Blueprint("superadmin", __name__, url_prefix="/superadmin")
 
@@ -73,7 +74,23 @@ def dashboard():
                 "hospital_name": form.name.data.strip(),
                 "email": email,
             }
-            flash("Hospital created. Copy the credentials below.", "success")
+            
+            # Send credentials email to hospital admin
+            email_sent = EmailService.send_hospital_credentials_email(
+                hospital_email=email,
+                hospital_name=form.name.data.strip(),
+                hospital_id=hospital_id,
+                username=email,
+                password=temp_password
+            )
+            
+            success_msg = "✅ Hospital created successfully!"
+            if email_sent:
+                success_msg += " Credentials email has been sent to the hospital admin."
+            else:
+                success_msg += " (Note: Credentials email could not be sent, but hospital is created.)"
+            
+            flash(success_msg, "success")
     elif request.method == "POST":
         flash("Please fix the highlighted form errors before generating Hospital ID.", "danger")
 

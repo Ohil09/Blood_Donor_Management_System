@@ -1,9 +1,11 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user, logout_user
+from werkzeug.security import check_password_hash, generate_password_hash
 from app import db
 from app.models.inventory import Inventory
 from app.services.inventory_service import InventoryService
 from app.forms.inventory_forms import AddStockForm, DepleteStockForm, SearchInventoryForm
+from app.forms.auth_forms import ChangePasswordForm
 from datetime import datetime, timezone
 from bson import ObjectId
 from app.services.assignment_service import AssignmentService
@@ -12,7 +14,6 @@ from app.services.exchange_service import ExchangeService
 from app.utils.auth_utils import get_current_hospital_id, get_current_hospital_info
 from app.services.donation_service import DonationService
 from app.forms.donation_forms import ConfirmDonationForm
-from flask_login import login_required, current_user, logout_user
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 
@@ -607,3 +608,49 @@ def confirm_donation():
         return redirect(url_for("admin.donors"))
 
     return render_template("admin/confirm_donation.html", form=form)
+
+
+# ── Change Password (Hospital Admin) ─────────────────────────
+@admin_bp.route("/change-password", methods=["GET", "POST"])
+@login_required
+@admin_required
+def change_password():
+    """Allow hospital admin to change password"""
+    
+    form = ChangePasswordForm()
+    
+    if form.validate_on_submit():
+        # Get current user from database
+        user_doc = db.users.find_one({"_id": ObjectId(current_user.id)})
+        
+        if not user_doc:
+            flash("User account not found.", "danger")
+            return redirect(url_for("admin.dashboard"))
+        
+        # Verify old password
+        if not check_password_hash(user_doc["password_hash"], form.old_password.data):
+            flash("❌ Current password is incorrect.", "danger")
+            return render_template("admin/change_password.html", form=form)
+        
+        # Check if new password is same as old password
+        if form.old_password.data == form.new_password.data:
+            flash("⚠️ New password must be different from current password.", "warning")
+            return render_template("admin/change_password.html", form=form)
+        
+        # Update password
+        new_password_hash = generate_password_hash(form.new_password.data)
+        db.users.update_one(
+            {"_id": ObjectId(current_user.id)},
+            {
+                "$set": {
+                    "password_hash": new_password_hash,
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        
+        flash("✅ Password changed successfully! Please log in again with your new password.", "success")
+        logout_user()
+        return redirect(url_for("auth.login"))
+    
+    return render_template("admin/change_password.html", form=form)

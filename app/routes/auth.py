@@ -6,6 +6,7 @@ from app import db
 from app.forms.auth_forms import RegistrationForm, LoginForm
 from app.models.user import User
 from app.services.donor_id_service import generate_donor_id
+from app.services.email_service import EmailService
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -56,9 +57,25 @@ def register():
             "created_at": datetime.now(timezone.utc),
             "is_active": True,
             "last_donation_date": None,
+            "next_eligible_date": None,
+            "donation_count": 0,
         })
         
-        flash(f"✅ Registration successful! Your Donor ID is {donor_id}. Please wait for admin approval to access full features.", "success")
+        # Send welcome email with donor ID
+        email_sent = EmailService.send_donor_welcome_email(
+            donor_email=email,
+            donor_name=form.full_name.data,
+            donor_id=donor_id
+        )
+        
+        success_msg = f"✅ Registration successful! Your Donor ID is {donor_id}."
+        if email_sent:
+            success_msg += " A welcome email has been sent to your inbox."
+        else:
+            success_msg += " (Note: Welcome email could not be sent, but your registration is complete.)"
+        success_msg += " Please wait for admin approval to access full features."
+        
+        flash(success_msg, "success")
         return redirect(url_for("auth.login"))
     
     return render_template("auth/register.html", form=form)

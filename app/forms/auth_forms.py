@@ -79,3 +79,14 @@ class EditProfileForm(FlaskForm):
     phone = StringField("Phone Number",
                     validators=[DataRequired(), Length(min=10, max=10)])
     submit = SubmitField("Update Profile")
+
+
+class ChangePasswordForm(FlaskForm):
+    """Form for changing password (requires old password verification)"""
+    old_password = PasswordField("Current Password",
+                    validators=[DataRequired()])
+    new_password = PasswordField("New Password",
+                    validators=[DataRequired(), Length(min=6)])
+    confirm_password = PasswordField("Confirm New Password",
+                    validators=[DataRequired(), EqualTo("new_password", message="Passwords must match")])
+    submit = SubmitField("Change Password")
