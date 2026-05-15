@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, app
 from pymongo import MongoClient
 from app.config import config
 from app.extensions import login_manager, mail, csrf
@@ -31,11 +31,15 @@ def create_app(config_name="development"):
     from app.routes.auth import auth_bp
     from app.routes.donor import donor_bp
     from app.routes.admin import admin_bp
+    from app.routes.superadmin import superadmin_bp
     from app.services.donation_service import DonationService
+    from app.services.exchange_service import ExchangeService
     DonationService.ensure_indexes(db)
+    ExchangeService.ensure_indexes(db)
     app.register_blueprint(auth_bp)
     app.register_blueprint(donor_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(superadmin_bp)
 
     # from app.routes.donor      import donor_bp
     # from app.routes.admin      import admin_bp

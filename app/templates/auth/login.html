@@ -19,11 +19,11 @@
           <!-- Login ID -->
           <div class="mb-3">
             {{ form.login_id.label(class="form-label fw-semibold") }}
-            {{ form.login_id(class="form-control" + (" is-invalid" if form.login_id.errors else ""), placeholder="Your Donor ID e.g. BDMS-AB1234") }}
+            {{ form.login_id(class="form-control" + (" is-invalid" if form.login_id.errors else ""), placeholder="Donor ID (BDMS-XXXXXX) or Hospital ID (HOSP-1234)") }}
             {% for error in form.login_id.errors %}
               <div class="invalid-feedback">{{ error }}</div>
             {% endfor %}
-            <div class="form-text">Use your Donor ID or registered email.</div>
+            <div class="form-text">Use your Donor ID, Hospital ID, or registered email.</div>
           </div>
 
           <!-- Password -->

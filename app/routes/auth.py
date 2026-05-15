@@ -76,14 +76,14 @@ def login():
         login_id = form.login_id.data.strip()
         password = form.password.data
 
-        # Find user by donor_id OR email
+        # Find user by donor_id, email, OR hospital_id for admins
         doc = db.users.find_one({
             "$or": [
-                {"donor_id": login_id},
-                {"email": login_id.lower()}
-            ]
-        })
-
+            {"donor_id": login_id},
+            {"email": login_id.lower()},
+            {"hospital_id": login_id, "role": {"$in": ["admin", "hospital_admin", "superadmin"]}}
+        ]
+    })
         if not doc or not check_password_hash(doc["password_hash"], password):
             flash("Invalid credentials. Please try again.", "danger")
             return render_template("auth/login.html", form=form)
@@ -109,6 +109,8 @@ def logout():
 def _redirect_by_role(role):
     if role == "donor":
         return redirect(url_for("donor.dashboard"))
-    elif role in ["admin", "hospital_admin", "superadmin"]:
+    elif role == "superadmin":
+        return redirect(url_for("superadmin.dashboard"))
+    elif role in ["admin", "hospital_admin"]:
         return redirect(url_for("admin.dashboard"))
     return redirect(url_for("auth.login"))
