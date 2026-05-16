@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Donor Donation Requests{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <h2 class="mb-1">
+        <i class="fa-solid fa-hand-holding-droplet me-2"></i>Donor Donation Requests
+      </h2>
+      <p class="text-muted">Review and manage donation requests from donors</p>
+    </div>
+  </div>
+
+  <!-- ── Status Filter ── -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <div class="btn-group" role="group">
+        <a href="{{ url_for('admin.donor_requests_list') }}" class="btn btn-sm {{ 'btn-danger' if not status_filter else 'btn-outline-danger' }}">
+          All Requests ({{ total_requests }})
+        </a>
+        <a href="{{ url_for('admin.donor_requests_list', status='pending') }}" class="btn btn-sm {{ 'btn-warning' if status_filter == 'pending' else 'btn-outline-warning' }}">
+          <i class="fa-solid fa-clock me-1"></i>Pending
+        </a>
+        <a href="{{ url_for('admin.donor_requests_list', status='accepted') }}" class="btn btn-sm {{ 'btn-success' if status_filter == 'accepted' else 'btn-outline-success' }}">
+          <i class="fa-solid fa-check-circle me-1"></i>Accepted
+        </a>
+        <a href="{{ url_for('admin.donor_requests_list', status='rejected') }}" class="btn btn-sm {{ 'btn-danger' if status_filter == 'rejected' else 'btn-outline-danger' }}">
+          <i class="fa-solid fa-times-circle me-1"></i>Rejected
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {% if requests %}
+    <div class="table-responsive">
+      <table class="table table-hover table-sm">
+        <thead class="table-danger">
+          <tr>
+            <th>Donor Name</th>
+            <th>Donor ID</th>
+            <th>Blood Group</th>
+            <th>Units</th>
+            <th>Urgency</th>
+            <th>Status</th>
+            <th>Submitted</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for req in requests %}
+            <tr class="{% if req.model.status == 'pending' %}table-light{% endif %}">
+              <td>
+                <strong>{{ req.model.donor_name }}</strong>
+              </td>
+              <td>
+                <small class="text-muted">{{ req.model.donor_id }}</small>
+              </td>
+              <td>
+                <span class="badge bg-danger" style="font-size: 0.9rem;">{{ req.model.blood_group }}</span>
+              </td>
+              <td>{{ req.model.units_offered }}</td>
+              <td>
+                <span class="badge bg-{{ req.model.get_urgency_badge() }}">
+                  {{ req.model.urgency_level|title }}
+                </span>
+              </td>
+              <td>
+                <span class="badge bg-{{ req.model.get_status_badge() }}">
+                  {{ req.model.status|title }}
+                </span>
+              </td>
+              <td>
+                <small>{{ req.created_display }}</small>
+              </td>
+              <td>
+                <a href="{{ url_for('admin.donor_request_detail', request_id=req.model.id) }}" class="btn btn-sm btn-primary">
+                  <i class="fa-solid fa-arrow-right me-1"></i>Review
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ── Pagination ── -->
+    {% if total_pages > 1 %}
+      <nav aria-label="Page navigation" class="mt-4">
+        <ul class="pagination justify-content-center">
+          <li class="page-item {% if page == 1 %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('admin.donor_requests_list', page=1, status=status_filter) }}">First</a>
+          </li>
+          <li class="page-item {% if page == 1 %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('admin.donor_requests_list', page=page-1, status=status_filter) }}">Previous</a>
+          </li>
+
+          {% for p in range(1, total_pages + 1) %}
+            <li class="page-item {% if p == page %}active{% endif %}">
+              <a class="page-link" href="{{ url_for('admin.donor_requests_list', page=p, status=status_filter) }}">{{ p }}</a>
+            </li>
+          {% endfor %}
+
+          <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('admin.donor_requests_list', page=page+1, status=status_filter) }}">Next</a>
+          </li>
+          <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('admin.donor_requests_list', page=total_pages, status=status_filter) }}">Last</a>
+          </li>
+        </ul>
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="alert alert-info" role="alert">
+      <i class="fa-solid fa-circle-info me-2"></i>
+      {% if status_filter %}
+        No {{ status_filter }} requests found.
+      {% else %}
+        No donation requests yet. Check back soon as donors submit their requests.
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <!-- ── Info Section ── -->
+  <div class="alert alert-success mt-4" role="alert">
+    <i class="fa-solid fa-circle-check me-2"></i>
+    <strong>How it works:</strong>
+    <ul class="mb-0 mt-2">
+      <li>Donors submit donation requests through their dashboard</li>
+      <li>Review each request and decide to accept or reject</li>
+      <li>When accepted, blood units are automatically added to your inventory</li>
+      <li>Rejected requests notify donors of the reason</li>
+    </ul>
+  </div>
+
+  <!-- ── Quick Links ── -->
+  <div class="mt-4 p-4 bg-light rounded">
+    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="fa-solid fa-home me-1"></i>Back to Dashboard
+    </a>
+  </div>
+</div>
+{% endblock %}

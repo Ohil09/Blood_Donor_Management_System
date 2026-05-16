@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Submit Donation Request{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <h2 class="mb-4">
+        <i class="fa-solid fa-hand-holding-droplet me-2"></i>Submit Donation Request
+      </h2>
+
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-danger text-white">
+          <h5 class="mb-0">Your Information</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <p class="text-muted mb-1">Name</p>
+              <h6>{{ donor.full_name }}</h6>
+            </div>
+            <div class="col-md-6 mb-3">
+              <p class="text-muted mb-1">Donor ID</p>
+              <h6>{{ donor.donor_id }}</h6>
+            </div>
+            <div class="col-md-6 mb-3">
+              <p class="text-muted mb-1">Blood Group</p>
+              <h6 class="text-danger" style="font-size: 1.3rem; font-weight: bold;">{{ donor.blood_group }}</h6>
+            </div>
+            <div class="col-md-6 mb-3">
+              <p class="text-muted mb-1">City</p>
+              <h6>{{ donor.city }}</h6>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Request Form ── -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light border-bottom">
+          <h5 class="mb-0">Donation Details</h5>
+        </div>
+        <div class="card-body p-4">
+          <form method="POST" novalidate>
+            {{ form.hidden_tag() }}
+
+            <div class="mb-3">
+              {{ form.hospital_id.label(class="form-label fw-bold") }}
+              {{ form.hospital_id(class="form-select" + (" is-invalid" if form.hospital_id.errors else "")) }}
+              {% if form.hospital_id.errors %}
+                <div class="invalid-feedback d-block">
+                  {% for error in form.hospital_id.errors %}
+                    <small>{{ error }}</small><br>
+                  {% endfor %}
+                </div>
+              {% endif %}
+              <small class="text-muted">Select the hospital where you want to donate</small>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                {{ form.units_offered.label(class="form-label fw-bold") }}
+                {{ form.units_offered(class="form-control" + (" is-invalid" if form.units_offered.errors else ""), min="1", max="5") }}
+                {% if form.units_offered.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.units_offered.errors %}
+                      <small>{{ error }}</small><br>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+                <small class="text-muted">How many units of blood can you donate?</small>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                {{ form.urgency_level.label(class="form-label fw-bold") }}
+                {{ form.urgency_level(class="form-select" + (" is-invalid" if form.urgency_level.errors else "")) }}
+                {% if form.urgency_level.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.urgency_level.errors %}
+                      <small>{{ error }}</small><br>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+                <small class="text-muted">Priority level of your donation</small>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              {{ form.preferred_date.label(class="form-label fw-bold") }}
+              {{ form.preferred_date(class="form-control" + (" is-invalid" if form.preferred_date.errors else ""), type="date") }}
+              {% if form.preferred_date.errors %}
+                <div class="invalid-feedback d-block">
+                  {% for error in form.preferred_date.errors %}
+                    <small>{{ error }}</small><br>
+                  {% endfor %}
+                </div>
+              {% endif %}
+              <small class="text-muted">When are you available to donate? (Optional)</small>
+            </div>
+
+            <div class="mb-4">
+              {{ form.additional_notes.label(class="form-label fw-bold") }}
+              {{ form.additional_notes(class="form-control" + (" is-invalid" if form.additional_notes.errors else ""), rows="4", placeholder="Any additional information for the hospital...") }}
+              {% if form.additional_notes.errors %}
+                <div class="invalid-feedback d-block">
+                  {% for error in form.additional_notes.errors %}
+                    <small>{{ error }}</small><br>
+                  {% endfor %}
+                </div>
+              {% endif %}
+              <small class="text-muted">Share any relevant medical history or allergies (Optional)</small>
+            </div>
+
+            <div class="d-flex gap-2">
+              {{ form.submit(class="btn btn-danger btn-lg") }}
+              <a href="{{ url_for('donor.find_hospitals') }}" class="btn btn-outline-secondary btn-lg">
+                Cancel
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ── Info Box ── -->
+      <div class="alert alert-info mt-4" role="alert">
+        <i class="fa-solid fa-circle-info me-2"></i>
+        <strong>What happens next?</strong>
+        <p class="mb-0 mt-2">
+          Once you submit your donation request, the hospital will review it and contact you within 24-48 hours. 
+          You can track the status of your request in your "My Requests" section.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
