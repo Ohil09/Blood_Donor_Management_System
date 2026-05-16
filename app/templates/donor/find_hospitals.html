@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Find Hospitals{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <h2 class="mb-4">
+    <i class="fa-solid fa-hospital me-2"></i>Find Nearby Hospitals
+  </h2>
+
+  <!-- ── Search Form ── -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <form method="GET" class="d-flex gap-2">
+        <input type="text" name="city" class="form-control" placeholder="Search by city name..." value="{{ search_city }}">
+        <button type="submit" class="btn btn-danger">
+          <i class="fa-solid fa-magnifying-glass me-1"></i>Search
+        </button>
+        {% if search_city %}
+          <a href="{{ url_for('donor.find_hospitals') }}" class="btn btn-outline-secondary">
+            Clear
+          </a>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+
+  {% if hospitals %}
+    <div class="row">
+      {% for hospital in hospitals %}
+        <div class="col-md-6 col-lg-4 mb-4">
+          <div class="card border-0 shadow-sm h-100 hospital-card" style="transition: transform 0.2s;">
+            <div class="card-body">
+              <h5 class="card-title text-danger mb-2">
+                <i class="fa-solid fa-hospital-user me-2"></i>{{ hospital.name }}
+              </h5>
+              
+              <div class="small text-muted mb-3">
+                <p class="mb-2">
+                  <i class="fa-solid fa-location-dot me-2 text-danger"></i>
+                  <strong>{{ hospital.city }}</strong>
+                </p>
+                <p class="mb-2">
+                  <i class="fa-solid fa-map me-2 text-danger"></i>
+                  {{ hospital.address or 'N/A' }}
+                </p>
+                <p class="mb-2">
+                  <i class="fa-solid fa-phone me-2 text-danger"></i>
+                  {{ hospital.phone or 'N/A' }}
+                </p>
+                <p class="mb-0">
+                  <i class="fa-solid fa-envelope me-2 text-danger"></i>
+                  {{ hospital.email or 'N/A' }}
+                </p>
+              </div>
+
+              <a href="{{ url_for('donor.donation_request_new') }}?hospital_id={{ hospital.hospital_id }}" class="btn btn-danger btn-sm w-100">
+                <i class="fa-solid fa-hand-holding-droplet me-1"></i>Submit Donation Request
+              </a>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="alert alert-warning" role="alert">
+      <i class="fa-solid fa-circle-exclamation me-2"></i>
+      {% if search_city %}
+        No hospitals found in <strong>{{ search_city }}</strong>. Try a different search term.
+      {% else %}
+        No hospitals registered yet.
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <!-- ── Quick Links ── -->
+  <div class="mt-5 p-4 bg-light rounded">
+    <h5 class="mb-3">Quick Actions</h5>
+    <a href="{{ url_for('donor.donation_requests_list') }}" class="btn btn-outline-danger btn-sm me-2">
+      <i class="fa-solid fa-list me-1"></i>View My Requests
+    </a>
+    <a href="{{ url_for('donor.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="fa-solid fa-home me-1"></i>Back to Dashboard
+    </a>
+  </div>
+</div>
+
+<style>
+  .hospital-card {
+    border: 1px solid #f0f0f0 !important;
+  }
+  .hospital-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(220, 53, 69, 0.15) !important;
+  }
+</style>
+{% endblock %}
