@@ -269,6 +269,12 @@ def donation_request_new():
         for h in hospitals
         if h.get("hospital_id") and h.get("name")
     ]
+    if request.method == "GET":
+        requested_hospital_id = request.args.get("hospital_id")
+        if requested_hospital_id and any(
+            choice[0] == requested_hospital_id for choice in form.hospital_id.choices
+        ):
+            form.hospital_id.data = requested_hospital_id
 
     if form.validate_on_submit():
         # Check if already has pending request at same hospital
@@ -286,10 +292,10 @@ def donation_request_new():
         preferred_date = None
         if form.preferred_date.data:
             try:
-                from datetime import datetime as dt
-                preferred_date = dt.strptime(form.preferred_date.data, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-            except:
-                pass
+                preferred_date = datetime.strptime(form.preferred_date.data, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            except ValueError:
+                flash("Preferred date must be in YYYY-MM-DD format.", "danger")
+                return render_template("donor/donation_request_new.html", form=form, donor=donor)
 
         hospital = db.hospitals.find_one({"hospital_id": form.hospital_id.data})
         

@@ -1,8 +1,7 @@
-from flask import Flask, app
+from flask import Flask
 from pymongo import MongoClient
 from app.config import config
 from app.extensions import login_manager, mail, csrf
-from app.services.donation_service import DonationService
 
 # Global db reference — imported by models and routes
 db = None
@@ -17,6 +16,16 @@ def create_app(config_name="development"):
     global db
     client = MongoClient(app.config["MONGO_URI"])
     db = client[app.config["MONGO_DB_NAME"]]
+    db.users.create_index("donor_id")
+    db.users.create_index("email")
+    db.users.create_index("phone")
+    db.users.create_index([("hospital_id", 1), ("role", 1)])
+    db.users.create_index([("role", 1), ("created_at", -1)])
+    db.hospitals.create_index("hospital_id")
+    db.hospitals.create_index("city")
+    db.donation_requests.create_index([("donor_id", 1), ("created_at", -1)])
+    db.donation_requests.create_index([("hospital_id", 1), ("created_at", -1)])
+    db.donation_requests.create_index([("hospital_id", 1), ("status", 1), ("created_at", -1)])
 
     # ── Initialize Extensions ────────────────────────────
     login_manager.init_app(app)

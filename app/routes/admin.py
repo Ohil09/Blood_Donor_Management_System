@@ -8,6 +8,7 @@ from app.forms.inventory_forms import AddStockForm, DepleteStockForm, SearchInve
 from app.forms.auth_forms import ChangePasswordForm
 from datetime import datetime, timezone
 from bson import ObjectId
+from bson.errors import InvalidId
 from app.services.assignment_service import AssignmentService
 from app.forms.exchange_forms import CreateExchangeRequestForm, ExchangeActionForm
 from app.services.exchange_service import ExchangeService
@@ -274,12 +275,10 @@ def unassigned_donors():
     page = request.args.get("page", 1, type=int)
     per_page = 10
     
-    # Get unassigned donors
-    all_unassigned = AssignmentService.get_unassigned_donors(db)
-    total_unassigned = len(all_unassigned)
-    
-    # Paginate
-    unassigned = all_unassigned[(page - 1) * per_page : page * per_page]
+    # Get unassigned donors (paged)
+    skip = (page - 1) * per_page
+    total_unassigned = AssignmentService.count_unassigned_donors(db)
+    unassigned = AssignmentService.get_unassigned_donors(db, skip=skip, limit=per_page)
     total_pages = (total_unassigned + per_page - 1) // per_page
     
     # Format
@@ -728,7 +727,7 @@ def donor_request_detail(request_id):
             "_id": ObjectId(request_id),
             "hospital_id": hospital_id
         })
-    except:
+    except InvalidId:
         req_doc = None
 
     if not req_doc:
@@ -769,14 +768,31 @@ def donor_request_detail(request_id):
             
             # Update inventory - add units to blood group stock
             inventory = Inventory.get_by_hospital(hospital_id, db)
-            if inventory:
-                success, msg = inventory.add_stock(
-                    donor_request.blood_group,
-                    donor_request.units_offered,
+            if not inventory:
+                Inventory.init_for_hospital(
+                    hospital_id,
+                    admin_user.get("hospital_name", "Unknown Hospital"),
                     db
                 )
+                inventory = Inventory.get_by_hospital(hospital_id, db)
 
-            flash(f"Donation request accepted! {donor_request.units_offered} units of {donor_request.blood_group} added to inventory.", "success")
+            if not inventory:
+                flash("Inventory not found for this hospital.", "danger")
+                return redirect(url_for("admin.donor_requests_list"))
+
+            success, msg = inventory.add_stock(
+                donor_request.blood_group,
+                donor_request.units_offered,
+                db
+            )
+            if not success:
+                flash(msg, "danger")
+                return redirect(url_for("admin.donor_requests_list"))
+
+            flash(
+                f"Donation request accepted! {donor_request.units_offered} units of {donor_request.blood_group} added to inventory.",
+                "success"
+            )
             
         elif action == "reject":
             # Update status

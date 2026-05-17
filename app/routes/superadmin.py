@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, flash, request
+from flask import Blueprint, render_template, flash, request, redirect, url_for
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
 from datetime import datetime, timezone
@@ -96,3 +96,76 @@ def dashboard():
 
     hospitals = list(db.hospitals.find({}).sort("created_at", -1).limit(50))
     return render_template("superadmin/dashboard.html", form=form, generated=generated, hospitals=hospitals)
+
+
+@superadmin_bp.route("/hospitals/<hospital_id>/delete", methods=["POST"])
+@login_required
+@superadmin_required
+def delete_hospital(hospital_id):
+    hospital_id = (hospital_id or "").strip()
+    if not hospital_id:
+        flash("Invalid hospital ID.", "danger")
+        return redirect(url_for("superadmin.dashboard"))
+
+    hospital = db.hospitals.find_one({"hospital_id": hospital_id})
+    if not hospital:
+        flash("Hospital not found.", "warning")
+        return redirect(url_for("superadmin.dashboard"))
+
+    now = datetime.now(timezone.utc)
+
+    # Unassign donors from this hospital
+    db.users.update_many(
+        {"hospital_id": hospital_id, "role": "donor"},
+        {"$set": {"hospital_id": None, "hospital_name": None, "updated_at": now}},
+    )
+
+    # Remove hospital admin accounts for this hospital
+    db.users.delete_many(
+        {"hospital_id": hospital_id, "role": {"$in": ["hospital_admin", "admin"]}}
+    )
+
+    # Cancel pending/accepted donation requests for this hospital
+    db.donation_requests.update_many(
+        {"hospital_id": hospital_id, "status": {"$in": ["pending", "accepted"]}},
+        {
+            "$set": {"status": "cancelled", "updated_at": now},
+            "$push": {
+                "audit": {
+                    "action": "cancelled",
+                    "actor_id": str(current_user.id),
+                    "timestamp": now,
+                    "note": "Hospital deleted by superadmin",
+                }
+            },
+        },
+    )
+
+    # Cancel pending/approved inter-hospital requests involving this hospital
+    db.inter_hospital_requests.update_many(
+        {
+            "$or": [
+                {"source_hospital_id": hospital_id},
+                {"target_hospital_id": hospital_id},
+            ],
+            "status": {"$in": ["pending", "approved"]},
+        },
+        {
+            "$set": {"status": "cancelled", "updated_at": now},
+            "$push": {
+                "audit": {
+                    "at": now,
+                    "action": "cancelled",
+                    "actor_id": str(current_user.id),
+                    "note": "Hospital deleted by superadmin",
+                }
+            },
+        },
+    )
+
+    # Remove inventory and hospital record
+    db.inventory.delete_many({"hospital_id": hospital_id})
+    db.hospitals.delete_one({"hospital_id": hospital_id})
+
+    flash(f"Hospital {hospital.get('name', hospital_id)} deleted successfully.", "success")
+    return redirect(url_for("superadmin.dashboard"))

@@ -71,6 +71,7 @@
         <th>City</th>
         <th>Email</th>
         <th>Created</th>
+        <th>Actions</th>
       </tr>
     </thead>
     <tbody>
@@ -81,6 +82,14 @@
         <td>{{ h.city }}</td>
         <td>{{ h.email }}</td>
         <td>{{ h.created_at }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('superadmin.delete_hospital', hospital_id=h.hospital_id) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete {{ h.name }}? This cannot be undone.');">
+              Delete
+            </button>
+          </form>
+        </td>
       </tr>
       {% endfor %}
     </tbody>

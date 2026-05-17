@@ -15,7 +15,7 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 @auth_bp.route("/register", methods=["GET", "POST"])
 def register():
     if current_user.is_authenticated:
-        return redirect(url_for("auth.login"))
+        return _redirect_by_role(current_user.role)
     
     form = RegistrationForm()
     
@@ -91,14 +91,16 @@ def login():
 
     if form.validate_on_submit():
         login_id = form.login_id.data.strip()
+        login_id_upper = login_id.upper()
+        login_id_lower = login_id.lower()
         password = form.password.data
 
         # Find user by donor_id, email, OR hospital_id for admins
         doc = db.users.find_one({
             "$or": [
-            {"donor_id": login_id},
-            {"email": login_id.lower()},
-            {"hospital_id": login_id, "role": {"$in": ["admin", "hospital_admin", "superadmin"]}}
+            {"donor_id": login_id_upper},
+            {"email": login_id_lower},
+            {"hospital_id": login_id_upper, "role": {"$in": ["admin", "hospital_admin", "superadmin"]}}
         ]
     })
         if not doc or not check_password_hash(doc["password_hash"], password):

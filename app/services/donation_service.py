@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from flask import current_app
 from bson import ObjectId
-from app.models import inventory
 from app.models.inventory import Inventory
 
 
