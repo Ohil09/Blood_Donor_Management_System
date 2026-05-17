@@ -48,18 +48,32 @@ class AssignmentService:
         return True, "Donor unassigned from hospital"
     
     @staticmethod
-    def get_unassigned_donors(db):
-        """Get all donors without hospital assignment"""
-        donors = list(
-            db.users.find({
-                "role": "donor",
-                "$or": [
-                    {"hospital_id": None},
-                    {"hospital_id": ""}
-                ]
-            }).sort("created_at", -1)
-        )
-        return donors
+    @staticmethod
+    def _unassigned_query():
+        return {
+            "role": "donor",
+            "$or": [
+                {"hospital_id": None},
+                {"hospital_id": ""}
+            ]
+        }
+
+    @staticmethod
+    def get_unassigned_donors(db, skip=0, limit=None):
+        """Get donors without hospital assignment (paged)."""
+        query = AssignmentService._unassigned_query()
+        cursor = db.users.find(query).sort("created_at", -1)
+        if skip:
+            cursor = cursor.skip(skip)
+        if limit:
+            cursor = cursor.limit(limit)
+        return list(cursor)
+
+    @staticmethod
+    def count_unassigned_donors(db):
+        """Count donors without hospital assignment."""
+        query = AssignmentService._unassigned_query()
+        return db.users.count_documents(query)
     
     @staticmethod
     def get_assigned_donors(hospital_id, db):

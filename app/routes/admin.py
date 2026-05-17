@@ -1,13 +1,20 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
-from flask_login import login_required, current_user
+from flask_login import login_required, current_user, logout_user
+from werkzeug.security import check_password_hash, generate_password_hash
 from app import db
 from app.models.inventory import Inventory
 from app.services.inventory_service import InventoryService
 from app.forms.inventory_forms import AddStockForm, DepleteStockForm, SearchInventoryForm
+from app.forms.auth_forms import ChangePasswordForm
 from datetime import datetime, timezone
 from bson import ObjectId
+from bson.errors import InvalidId
 from app.services.assignment_service import AssignmentService
-
+from app.forms.exchange_forms import CreateExchangeRequestForm, ExchangeActionForm
+from app.services.exchange_service import ExchangeService
+from app.utils.auth_utils import get_current_hospital_id, get_current_hospital_info
+from app.services.donation_service import DonationService
+from app.forms.donation_forms import ConfirmDonationForm
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 
@@ -16,7 +23,7 @@ def admin_required(f):
     from functools import wraps
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or current_user.role not in ["admin", "superadmin"]:
+        if not current_user.is_authenticated or current_user.role not in ["admin", "hospital_admin", "superadmin"]:
             flash("Access denied. Admin only.", "danger")
             return redirect(url_for("auth.login"))
         return f(*args, **kwargs)
@@ -32,10 +39,19 @@ def dashboard():
     
     # Get admin's hospital_id from user document
     admin_user = db.users.find_one({"_id": ObjectId(current_user.id)})
+    if not admin_user:
+        flash("Your account could not be loaded. Please log in again.", "danger")
+        logout_user()
+        return redirect(url_for("auth.login"))
+
+    if current_user.role == "superadmin":
+        return redirect(url_for("superadmin.dashboard"))
+
     hospital_id = admin_user.get("hospital_id")
     
     if not hospital_id:
         flash("Hospital not assigned to your account.", "warning")
+        logout_user()
         return redirect(url_for("auth.login"))
     
     # Get inventory for this hospital
@@ -181,7 +197,7 @@ def search_donors():
         search_performed = True
         blood_group = form.blood_group.data
         city = form.city.data
-        only_eligible = form.only_eligible.data == "on"
+        only_eligible = bool(form.only_eligible.data)
         
         if not blood_group:
             flash("Please select a blood group.", "warning")
@@ -259,12 +275,10 @@ def unassigned_donors():
     page = request.args.get("page", 1, type=int)
     per_page = 10
     
-    # Get unassigned donors
-    all_unassigned = AssignmentService.get_unassigned_donors(db)
-    total_unassigned = len(all_unassigned)
-    
-    # Paginate
-    unassigned = all_unassigned[(page - 1) * per_page : page * per_page]
+    # Get unassigned donors (paged)
+    skip = (page - 1) * per_page
+    total_unassigned = AssignmentService.count_unassigned_donors(db)
+    unassigned = AssignmentService.get_unassigned_donors(db, skip=skip, limit=per_page)
     total_pages = (total_unassigned + per_page - 1) // per_page
     
     # Format
@@ -307,6 +321,225 @@ def assign_donor(donor_id):
     
     return redirect(url_for("admin.unassigned_donors"))
 
+# ── Inter-Hospital Exchange Requests ────────────────────────────────────────
+@admin_bp.route("/exchange/requests")
+@login_required
+@admin_required
+def exchange_requests_list():
+    hospital_id = get_current_hospital_id()
+    if not hospital_id:
+        flash("Hospital not assigned to your account.", "warning")
+        return redirect(url_for("admin.dashboard"))
+
+    scope = request.args.get("scope", "all").strip().lower()
+    if scope not in {"all", "inbound", "outbound"}:
+        scope = "all"
+
+    status = request.args.get("status", "").strip() or None
+    blood_group = request.args.get("blood_group", "").strip() or None
+    page = request.args.get("page", 1, type=int)
+    per_page = 10
+
+    items, total = ExchangeService.list_requests(
+        db,
+        hospital_id=hospital_id,
+        scope=scope,
+        status=status,
+        blood_group=blood_group,
+        page=page,
+        per_page=per_page,
+    )
+    total_pages = (total + per_page - 1) // per_page
+
+    return render_template(
+        "admin/exchange_requests_list.html",
+        requests=items,
+        page=page,
+        total_pages=total_pages,
+        total=total,
+        scope=scope,
+        status=status or "",
+        blood_group=blood_group or "",
+        hospital_id=hospital_id,
+    )
+
+
+@admin_bp.route("/exchange/requests/new", methods=["GET", "POST"])
+@login_required
+@admin_required
+def exchange_request_new():
+    hospital_id, hospital_name = get_current_hospital_info()
+    if not hospital_id:
+        flash("Hospital not assigned to your account.", "warning")
+        return redirect(url_for("admin.dashboard"))
+
+    form = CreateExchangeRequestForm()
+    hospitals = list(
+        db.hospitals.find({"hospital_id": {"$ne": str(hospital_id)}}).sort("name", 1)
+    )
+    form.target_hospital_id.choices = [
+        (h["hospital_id"], f"{h['name']} ({h['hospital_id']})")
+        for h in hospitals
+        if h.get("hospital_id") and h.get("name")
+    ]
+
+    if form.validate_on_submit():
+        ok, msg, doc = ExchangeService.create_exchange_request(
+            db=db,
+            source_hospital_id=hospital_id,
+            source_hospital_name=hospital_name or "Unknown Hospital",
+            target_hospital_id=form.target_hospital_id.data,
+            created_by=current_user.id,
+            blood_group=form.blood_group.data,
+            units_required=form.units_required.data,
+            urgency=form.urgency.data,
+            preferred_fulfillment_date=form.preferred_fulfillment_date.data,
+            patient_name=form.patient_name.data,
+            notes=form.notes.data,
+        )
+        flash(msg, "success" if ok else "danger")
+        if ok:
+            return redirect(
+                url_for(
+                    "admin.exchange_request_detail",
+                    exchange_request_id=str(doc["_id"]),
+                )
+            )
+
+    return render_template(
+        "admin/exchange_request_new.html",
+        form=form,
+        has_hospitals=bool(form.target_hospital_id.choices),
+    )
+
+
+@admin_bp.route("/exchange/requests/<exchange_request_id>")
+@login_required
+@admin_required
+def exchange_request_detail(exchange_request_id):
+    hospital_id = get_current_hospital_id()
+    if not hospital_id:
+        flash("Hospital not assigned to your account.", "warning")
+        return redirect(url_for("admin.dashboard"))
+
+    req = ExchangeService.get_request(db, exchange_request_id, hospital_id=hospital_id)
+    if not req:
+        flash("Exchange request not found.", "danger")
+        return redirect(url_for("admin.exchange_requests_list"))
+
+    actor_role = ExchangeService.get_actor_role(req, hospital_id)
+    source_inventory = Inventory.get_by_hospital(req["source_hospital_id"], db)
+    target_inventory = Inventory.get_by_hospital(req["target_hospital_id"], db)
+    source_available_units = source_inventory.get_stock(req["blood_group"]) if source_inventory else 0
+    target_available_units = target_inventory.get_stock(req["blood_group"]) if target_inventory else 0
+
+    approve_form = ExchangeActionForm()
+    reject_form = ExchangeActionForm()
+    cancel_form = ExchangeActionForm()
+    fulfill_form = ExchangeActionForm()
+
+    return render_template(
+        "admin/exchange_request_detail.html",
+        req=req,
+        actor_role=actor_role,
+        source_available_units=source_available_units,
+        target_available_units=target_available_units,
+        approve_form=approve_form,
+        reject_form=reject_form,
+        cancel_form=cancel_form,
+        fulfill_form=fulfill_form,
+    )
+
+
+@admin_bp.route("/exchange/requests/<exchange_request_id>/approve", methods=["POST"])
+@login_required
+@admin_required
+def exchange_request_approve(exchange_request_id):
+    form = ExchangeActionForm()
+    if not form.validate_on_submit():
+        flash("Invalid request.", "danger")
+        return redirect(url_for("admin.exchange_request_detail", exchange_request_id=exchange_request_id))
+
+    hospital_id, hospital_name = get_current_hospital_info()
+    req = ExchangeService.get_request(db, exchange_request_id, hospital_id=hospital_id)
+    if not req:
+        flash("Exchange request not found.", "danger")
+        return redirect(url_for("admin.exchange_requests_list"))
+
+    inventory = Inventory.get_by_hospital(hospital_id, db)
+    if not inventory:
+        Inventory.init_for_hospital(hospital_id, hospital_name or "Unknown Hospital", db)
+        inventory = Inventory.get_by_hospital(hospital_id, db)
+
+    ok, msg = ExchangeService.approve_request(db, req, current_user.id, hospital_id, inventory)
+    flash(msg, "success" if ok else "warning")
+    return redirect(url_for("admin.exchange_request_detail", exchange_request_id=exchange_request_id))
+
+
+@admin_bp.route("/exchange/requests/<exchange_request_id>/reject", methods=["POST"])
+@login_required
+@admin_required
+def exchange_request_reject(exchange_request_id):
+    form = ExchangeActionForm()
+    if not form.validate_on_submit():
+        flash("Invalid request.", "danger")
+        return redirect(url_for("admin.exchange_request_detail", exchange_request_id=exchange_request_id))
+
+    hospital_id = get_current_hospital_id()
+    req = ExchangeService.get_request(db, exchange_request_id, hospital_id=hospital_id)
+    if not req:
+        flash("Exchange request not found.", "danger")
+        return redirect(url_for("admin.exchange_requests_list"))
+
+    ok, msg = ExchangeService.reject_request(db, req, current_user.id, hospital_id)
+    flash(msg, "success" if ok else "warning")
+    return redirect(url_for("admin.exchange_request_detail", exchange_request_id=exchange_request_id))
+
+
+@admin_bp.route("/exchange/requests/<exchange_request_id>/cancel", methods=["POST"])
+@login_required
+@admin_required
+def exchange_request_cancel(exchange_request_id):
+    form = ExchangeActionForm()
+    if not form.validate_on_submit():
+        flash("Invalid request.", "danger")
+        return redirect(url_for("admin.exchange_request_detail", exchange_request_id=exchange_request_id))
+
+    hospital_id = get_current_hospital_id()
+    req = ExchangeService.get_request(db, exchange_request_id, hospital_id=hospital_id)
+    if not req:
+        flash("Exchange request not found.", "danger")
+        return redirect(url_for("admin.exchange_requests_list"))
+
+    ok, msg = ExchangeService.cancel_request(db, req, current_user.id, hospital_id)
+    flash(msg, "success" if ok else "warning")
+    return redirect(url_for("admin.exchange_request_detail", exchange_request_id=exchange_request_id))
+
+
+@admin_bp.route("/exchange/requests/<exchange_request_id>/fulfill", methods=["POST"])
+@login_required
+@admin_required
+def exchange_request_fulfill(exchange_request_id):
+    form = ExchangeActionForm()
+    if not form.validate_on_submit():
+        flash("Invalid request.", "danger")
+        return redirect(url_for("admin.exchange_request_detail", exchange_request_id=exchange_request_id))
+
+    hospital_id, hospital_name = get_current_hospital_info()
+    req = ExchangeService.get_request(db, exchange_request_id, hospital_id=hospital_id)
+    if not req:
+        flash("Exchange request not found.", "danger")
+        return redirect(url_for("admin.exchange_requests_list"))
+
+    target_inventory = Inventory.get_by_hospital(hospital_id, db)
+    if not target_inventory:
+        Inventory.init_for_hospital(hospital_id, hospital_name or "Unknown Hospital", db)
+        target_inventory = Inventory.get_by_hospital(hospital_id, db)
+
+    ok, msg = ExchangeService.fulfill_request(db, req, current_user.id, hospital_id, target_inventory)
+    flash(msg, "success" if ok else "danger")
+    return redirect(url_for("admin.exchange_request_detail", exchange_request_id=exchange_request_id))
+
 
 # ── Reassign Donor ───────────────────────────────────────────
 @admin_bp.route("/reassign-donor/<donor_id>", methods=["POST"])
@@ -332,3 +565,266 @@ def reassign_donor(donor_id):
         flash(message, "danger")
     
     return redirect(url_for("admin.donors"))
+
+# ── Confirm Donation (Module 4) ─────────────────────────────────────────
+@admin_bp.route("/donations/confirm", methods=["GET", "POST"])
+@login_required
+@admin_required
+def confirm_donation():
+    hospital_id, hospital_name = get_current_hospital_info()
+    if not hospital_id:
+        flash("Hospital not assigned to your account.", "warning")
+        return redirect(url_for("admin.dashboard"))
+
+    form = ConfirmDonationForm()
+    if form.validate_on_submit():
+        donor_id = form.donor_id.data.strip().upper()
+        donor = db.users.find_one({
+            "donor_id": donor_id,
+            "role": "donor",
+            "hospital_id": hospital_id,
+            "is_active": True
+        })
+        if not donor:
+            flash("Donor not found in your hospital.", "danger")
+            return render_template("admin/confirm_donation.html", form=form)
+
+        summary = DonationService.record_donation(
+            db=db,
+            donor_doc=donor,
+            hospital_id=hospital_id,
+            hospital_name=hospital_name or "Unknown Hospital",
+            actor_id=current_user.id,
+            donation_type=form.donation_type.data,
+            units=form.units.data,
+            note=form.note.data
+        )
+
+        flash(
+            f"Donation recorded for {donor_id}. Next eligibility: {summary['next_eligible_date'].strftime('%d %b %Y')}.",
+            "success"
+        )
+        return redirect(url_for("admin.donors"))
+
+    return render_template("admin/confirm_donation.html", form=form)
+
+
+# ── Change Password (Hospital Admin) ─────────────────────────
+@admin_bp.route("/change-password", methods=["GET", "POST"])
+@login_required
+@admin_required
+def change_password():
+    """Allow hospital admin to change password"""
+    
+    form = ChangePasswordForm()
+    
+    if form.validate_on_submit():
+        # Get current user from database
+        user_doc = db.users.find_one({"_id": ObjectId(current_user.id)})
+        
+        if not user_doc:
+            flash("User account not found.", "danger")
+            return redirect(url_for("admin.dashboard"))
+        
+        # Verify old password
+        if not check_password_hash(user_doc["password_hash"], form.old_password.data):
+            flash("❌ Current password is incorrect.", "danger")
+            return render_template("admin/change_password.html", form=form)
+        
+        # Check if new password is same as old password
+        if form.old_password.data == form.new_password.data:
+            flash("⚠️ New password must be different from current password.", "warning")
+            return render_template("admin/change_password.html", form=form)
+        
+        # Update password
+        new_password_hash = generate_password_hash(form.new_password.data)
+        db.users.update_one(
+            {"_id": ObjectId(current_user.id)},
+            {
+                "$set": {
+                    "password_hash": new_password_hash,
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        
+        flash("✅ Password changed successfully! Please log in again with your new password.", "success")
+        logout_user()
+        return redirect(url_for("auth.login"))
+    
+    return render_template("admin/change_password.html", form=form)
+
+# -- Donor Donation Requests --
+@admin_bp.route('/donor-requests')
+@login_required
+@admin_required
+def donor_requests_list():
+    from app.models.donation_request import DonationRequest
+    admin_user = db.users.find_one({"_id": ObjectId(current_user.id)})
+    hospital_id = admin_user.get("hospital_id")
+    
+    if not hospital_id:
+        flash("Hospital not assigned to your account.", "warning")
+        return redirect(url_for("admin.dashboard"))
+
+    page = request.args.get("page", 1, type=int)
+    status_filter = request.args.get("status", "", type=str)
+
+    query = {"hospital_id": hospital_id}
+    if status_filter and status_filter in ["pending", "accepted", "rejected", "cancelled", "fulfilled"]:
+        query["status"] = status_filter
+
+    requests = list(
+        db.donation_requests.find(query)
+        .sort("created_at", -1)
+        .skip((page - 1) * 10)
+        .limit(10)
+    )
+
+    total_requests = db.donation_requests.count_documents(query)
+    total_pages = (total_requests + 9) // 10
+
+    formatted_requests = []
+    for req in requests:
+        dr = DonationRequest(req)
+        formatted_requests.append({
+            "doc": req,
+            "model": dr,
+            "created_display": DonationRequest.format_dt(dr.created_at),
+            "accepted_display": DonationRequest.format_dt(dr.accepted_at) if dr.accepted_at else "-",
+            "preferred_display": DonationRequest.format_date(dr.preferred_date) if dr.preferred_date else "-",
+        })
+
+    context = {
+        "requests": formatted_requests,
+        "page": page,
+        "total_pages": total_pages,
+        "total_requests": total_requests,
+        "status_filter": status_filter,
+    }
+
+    return render_template("admin/donor_requests_list.html", **context)
+
+
+# ── Donor Request Detail & Action ────────────────────────────
+@admin_bp.route("/donor-requests/<request_id>", methods=["GET", "POST"])
+@login_required
+@admin_required
+def donor_request_detail(request_id):
+    """View and accept/reject a specific donation request"""
+    from app.forms.donation_forms import DonationRequestActionForm
+    from app.models.donation_request import DonationRequest
+
+    admin_user = db.users.find_one({"_id": ObjectId(current_user.id)})
+    hospital_id = admin_user.get("hospital_id")
+    
+    if not hospital_id:
+        flash("Hospital not assigned to your account.", "warning")
+        return redirect(url_for("admin.dashboard"))
+
+    try:
+        req_doc = db.donation_requests.find_one({
+            "_id": ObjectId(request_id),
+            "hospital_id": hospital_id
+        })
+    except InvalidId:
+        req_doc = None
+
+    if not req_doc:
+        flash("Donation request not found.", "danger")
+        return redirect(url_for("admin.donor_requests_list"))
+
+    donor_request = DonationRequest(req_doc)
+    form = DonationRequestActionForm()
+
+    if form.validate_on_submit():
+        action = form.action.data
+        
+        if donor_request.status != "pending":
+            flash("This request has already been processed.", "warning")
+            return redirect(url_for("admin.donor_requests_list"))
+
+        if action == "accept":
+            # Update status
+            db.donation_requests.update_one(
+                {"_id": ObjectId(request_id)},
+                {
+                    "$set": {
+                        "status": "accepted",
+                        "accepted_at": datetime.now(timezone.utc),
+                        "accepted_by": str(current_user.id),
+                        "updated_at": datetime.now(timezone.utc)
+                    },
+                    "$push": {
+                        "audit": {
+                            "action": "accepted",
+                            "actor_id": str(current_user.id),
+                            "timestamp": datetime.now(timezone.utc),
+                            "note": f"Accepted by {admin_user.get('full_name')}"
+                        }
+                    }
+                }
+            )
+            
+            # Update inventory - add units to blood group stock
+            inventory = Inventory.get_by_hospital(hospital_id, db)
+            if not inventory:
+                Inventory.init_for_hospital(
+                    hospital_id,
+                    admin_user.get("hospital_name", "Unknown Hospital"),
+                    db
+                )
+                inventory = Inventory.get_by_hospital(hospital_id, db)
+
+            if not inventory:
+                flash("Inventory not found for this hospital.", "danger")
+                return redirect(url_for("admin.donor_requests_list"))
+
+            success, msg = inventory.add_stock(
+                donor_request.blood_group,
+                donor_request.units_offered,
+                db
+            )
+            if not success:
+                flash(msg, "danger")
+                return redirect(url_for("admin.donor_requests_list"))
+
+            flash(
+                f"Donation request accepted! {donor_request.units_offered} units of {donor_request.blood_group} added to inventory.",
+                "success"
+            )
+            
+        elif action == "reject":
+            # Update status
+            db.donation_requests.update_one(
+                {"_id": ObjectId(request_id)},
+                {
+                    "$set": {
+                        "status": "rejected",
+                        "rejection_reason": form.rejection_reason.data,
+                        "updated_at": datetime.now(timezone.utc)
+                    },
+                    "$push": {
+                        "audit": {
+                            "action": "rejected",
+                            "actor_id": str(current_user.id),
+                            "timestamp": datetime.now(timezone.utc),
+                            "note": form.rejection_reason.data or "No reason provided"
+                        }
+                    }
+                }
+            )
+            
+            flash("Donation request rejected.", "warning")
+
+        return redirect(url_for("admin.donor_requests_list"))
+
+    context = {
+        "donor_request": donor_request,
+        "form": form,
+        "created_display": DonationRequest.format_dt(donor_request.created_at),
+        "accepted_display": DonationRequest.format_dt(donor_request.accepted_at) if donor_request.accepted_at else "-",
+        "preferred_display": DonationRequest.format_date(donor_request.preferred_date) if donor_request.preferred_date else "-",
+    }
+
+    return render_template("admin/donor_request_detail.html", **context)

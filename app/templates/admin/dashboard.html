@@ -162,10 +162,19 @@
             <i class="fa-solid fa-hourglass-end me-1"></i>Assign Donors
         </a>
 
-        <a href="#" class="btn btn-outline-danger btn-sm disabled">
-          <i class="fa-solid fa-bell me-1"></i>Blood Requests (Coming Soon)
+        <a href="{{ url_for('admin.exchange_requests_list') }}" class="btn btn-outline-danger btn-sm ">
+          <i class="fa-solid fa-right-left me-1"></i>Cross-Hospital Exchange
         </a>
 
+        <a href="{{ url_for('admin.confirm_donation') }}" class="btn btn-outline-danger btn-sm ">
+          <i class="fa-solid fa-bell me-1"></i>Confirm Donations
+        </a>
+
+        <a href="{{ url_for('admin.donor_requests_list') }}" class="btn btn-info btn-sm">
+          <i class="fa-solid fa-hand-holding-droplet me-1"></i>Donor Requests
+        </a>
+
+        
         
       </div>
     </div>

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h2>Create Cross-Hospital Exchange Request</h2>
+
+  {% if not has_hospitals %}
+    <div class="alert alert-warning">
+      No other hospitals are available yet. Ask super admin to register at least one more hospital.
+    </div>
+  {% endif %}
+
+  <form method="POST">
+    {{ form.hidden_tag() }}
+
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        {{ form.target_hospital_id.label(class="form-label") }}
+        {{ form.target_hospital_id(class="form-select") }}
+      </div>
+      <div class="col-md-3 mb-3">
+        {{ form.blood_group.label(class="form-label") }}
+        {{ form.blood_group(class="form-select") }}
+      </div>
+      <div class="col-md-3 mb-3">
+        {{ form.units_required.label(class="form-label") }}
+        {{ form.units_required(class="form-control") }}
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-4 mb-3">
+        {{ form.urgency.label(class="form-label") }}
+        {{ form.urgency(class="form-select") }}
+      </div>
+      <div class="col-md-8 mb-3">
+        {{ form.preferred_fulfillment_date.label(class="form-label") }}
+        {{ form.preferred_fulfillment_date(class="form-control") }}
+      </div>
+    </div>
+
+    <div class="mb-3">
+      {{ form.patient_name.label(class="form-label") }}
+      {{ form.patient_name(class="form-control") }}
+    </div>
+
+    <div class="mb-3">
+      {{ form.notes.label(class="form-label") }}
+      {{ form.notes(class="form-control", rows="3") }}
+    </div>
+
+    {% if has_hospitals %}
+      {{ form.submit(class="btn btn-primary") }}
+    {% else %}
+      {{ form.submit(class="btn btn-primary", disabled="disabled") }}
+    {% endif %}
+    <a href="{{ url_for('admin.exchange_requests_list') }}" class="btn btn-secondary">Back</a>
+  </form>
+</div>
+{% endblock %}

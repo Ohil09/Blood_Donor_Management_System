@@ -13,7 +13,7 @@
       <p class="text-muted">Donor ID: <strong>{{ donor.donor_id }}</strong></p>
     </div>
     <div class="col-md-4 text-end">
-      <a href="{{ url_for('donor.profile') }}" class="btn btn-outline-danger btn-sm">
+      <a href="{{ url_for('donor.edit_profile') }}" class="btn btn-outline-danger btn-sm">
         <i class="fa-solid fa-edit me-1"></i>Edit Profile
       </a>
     </div>
@@ -34,13 +34,13 @@
               <i class="fa-solid fa-times-circle me-1"></i>NOT ELIGIBLE
             </span>
             <p class="mt-3 text-muted">
-              Eligible in <strong>{{ days_until_eligible }} days</strong>
+              Next eligible date: <strong>{{ next_eligible_display }}</strong>
             </p>
             <small class="text-muted">Last donation: {{ last_donation_display }}</small>
           {% endif %}
         </div>
+        </div>
       </div>
-    </div>
 
     <!-- ── Blood Group Card ── -->
     <div class="col-md-6">
@@ -111,19 +111,152 @@
   <div class="row">
     <div class="col-md-12">
       <h5 class="mb-3">Quick Actions</h5>
-      <div class="d-flex gap-2">
+      <div class="d-flex flex-wrap gap-2">
         <a href="{{ url_for('donor.history') }}" class="btn btn-danger btn-sm">
           <i class="fa-solid fa-history me-1"></i>View Donation History
         </a>
+        <a href="{{ url_for('donor.donation_requests_list') }}" class="btn btn-info btn-sm">
+          <i class="fa-solid fa-list-check me-1"></i>My Requests
+        </a>
+        {% if is_eligible %}
+          <a href="{{ url_for('donor.find_hospitals') }}" class="btn btn-warning btn-sm">
+            <i class="fa-solid fa-hospital me-1"></i>Find Hospitals
+          </a>
+          <a href="{{ url_for('donor.donation_request_new') }}" class="btn btn-success btn-sm">
+            <i class="fa-solid fa-hand-holding-droplet me-1"></i>New Donation Request
+          </a>
+        {% endif %}
         <a href="{{ url_for('donor.profile') }}" class="btn btn-outline-danger btn-sm">
           <i class="fa-solid fa-user me-1"></i>Update Profile
         </a>
-        <a href="#" class="btn btn-outline-danger btn-sm disabled">
-          <i class="fa-solid fa-bell me-1"></i>Notifications (Coming Soon)
+        <a href="{{ url_for('donor.change_password') }}" class="btn btn-outline-secondary btn-sm">
+          <i class="fa-solid fa-lock me-1"></i>Change Password
         </a>
       </div>
     </div>
   </div>
+
+  <!-- ── Donation Request Module ── -->
+  {% if is_eligible %}
+  <div class="row mt-4">
+    <div class="col-md-12">
+      <div class="card border-0 shadow-sm border-start border-5 border-success">
+        <div class="card-header bg-light border-bottom">
+          <h5 class="mb-0">
+            <i class="fa-solid fa-hand-holding-droplet me-2 text-success"></i>Express Your Willingness to Donate
+          </h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-3">
+            Great news! You are currently eligible to donate. Help save lives by expressing your willingness to donate at hospitals near you.
+          </p>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <h6 class="text-success mb-2">
+                <i class="fa-solid fa-check-circle me-1"></i>How It Works
+              </h6>
+              <ul class="small mb-0">
+                <li>Select a hospital near you</li>
+                <li>Specify the number of units you can donate</li>
+                <li>Hospitals review your request</li>
+                <li>They'll contact you for scheduling</li>
+              </ul>
+            </div>
+            <div class="col-md-6">
+              <h6 class="text-success mb-2">
+                <i class="fa-solid fa-star me-1"></i>Benefits
+              </h6>
+              <ul class="small mb-0">
+                <li>Save lives in your community</li>
+                <li>Track your donations easily</li>
+                <li>Get recognized as a hero donor</li>
+                <li>Help hospitals manage blood supply</li>
+              </ul>
+            </div>
+          </div>
+          <div class="mt-3 d-flex gap-2">
+            <a href="{{ url_for('donor.find_hospitals') }}" class="btn btn-success btn-sm">
+              <i class="fa-solid fa-hospital me-1"></i>Find Hospitals
+            </a>
+            <a href="{{ url_for('donor.donation_request_new') }}" class="btn btn-success btn-sm">
+              <i class="fa-solid fa-hand-holding-droplet me-1"></i>Submit Request Now
+            </a>
+            <a href="{{ url_for('donor.donation_requests_list') }}" class="btn btn-outline-success btn-sm">
+              <i class="fa-solid fa-list-check me-1"></i>View My Requests
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="row mt-4">
+    <div class="col-md-12">
+      <div class="card border-0 shadow-sm border-start border-5 border-warning">
+        <div class="card-header bg-light border-bottom">
+          <h5 class="mb-0">
+            <i class="fa-solid fa-hourglass-end me-2 text-warning"></i>Not Eligible to Donate Yet
+          </h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-0">
+            You will be able to submit donation requests once you become eligible on <strong>{{ next_eligible_display }}</strong>. 
+            In the meantime, you can still view hospitals and prepare your request!
+          </p>
+          <div class="mt-3">
+            <a href="{{ url_for('donor.find_hospitals') }}" class="btn btn-outline-warning btn-sm">
+              <i class="fa-solid fa-hospital me-1"></i>Browse Hospitals
+            </a>
+            <a href="{{ url_for('donor.donation_requests_list') }}" class="btn btn-outline-info btn-sm">
+              <i class="fa-solid fa-list-check me-1"></i>View My Requests
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Recent Donations ── -->
+  {% if recent_donations %}
+  <div class="row mt-4">
+    <div class="col-md-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light border-bottom">
+          <h5 class="mb-0">
+            <i class="fa-solid fa-history me-2"></i>Recent Donations
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-sm table-hover">
+              <thead class="table-danger">
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Units</th>
+                  <th>Hospital</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for donation in recent_donations %}
+                  <tr>
+                    <td>{{ donation.donation_date_display }}</td>
+                    <td>
+                      <span class="badge bg-info">{{ donation.donation_type.replace('_', ' ')|title }}</span>
+                    </td>
+                    <td>{{ donation.units }}</td>
+                    <td>{{ donation.hospital_name or "N/A" }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
 </div>
 {% endblock %}
