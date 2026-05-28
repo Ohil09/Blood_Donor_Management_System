@@ -1,5 +1,4 @@
-from datetime import datetime, timezone
-from bson import ObjectId
+from datetime import datetime
 
 
 class DonationRequest:

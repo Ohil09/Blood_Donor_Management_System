@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timezone
@@ -9,6 +9,22 @@ from app.services.donor_id_service import generate_donor_id
 from app.services.email_service import EmailService
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
+
+
+# ── Home / Landing Page ─────────────────────────────────────
+@auth_bp.route("/", methods=["GET"])
+def landing():
+    """Display the landing page with login/register options."""
+    if current_user.is_authenticated:
+        # Redirect authenticated users to their dashboard
+        if current_user.role == "donor":
+            return redirect(url_for("donor.dashboard"))
+        elif current_user.role in ["admin", "hospital_admin"]:
+            return redirect(url_for("admin.dashboard"))
+        elif current_user.role == "superadmin":
+            return redirect(url_for("superadmin.dashboard"))
+
+    return render_template("landing.html")
 
 
 # ── Register ────────────────────────────────────────────────

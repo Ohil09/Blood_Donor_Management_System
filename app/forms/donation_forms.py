@@ -2,6 +2,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, IntegerField, TextAreaField, SubmitField
 from wtforms.validators import DataRequired, NumberRange, Optional, Length
 
+
 class ConfirmDonationForm(FlaskForm):
     donor_id = StringField("Donor ID", validators=[DataRequired(), Length(min=5, max=40)])
     donation_type = SelectField(

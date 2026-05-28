@@ -19,6 +19,7 @@ def _to_utc_aware(value):
 # ── Check role is donor ──────────────────────────────────────
 def donor_required(f):
     from functools import wraps
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or current_user.role != "donor":
@@ -323,10 +324,11 @@ def donation_request_new():
                 "note": f"Donor {donor_id} created request"
             }]
         }
-        
-        result = db.donation_requests.insert_one(doc)
-        
-        flash("✅ Donation request submitted successfully! Hospital will review it shortly.", "success")
+
+        db.donation_requests.insert_one(doc)
+
+        flash("✅ Donation request submitted successfully! Hospital will review it shortly.",
+              "success")
         return redirect(url_for("donor.donation_requests_list"))
 
     return render_template("donor/donation_request_new.html", form=form, donor=donor)

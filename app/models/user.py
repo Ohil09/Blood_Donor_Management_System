@@ -1,22 +1,22 @@
 from flask_login import UserMixin
 from app import db
 
+
 class User(UserMixin):
     """
     Wraps a MongoDB user document for Flask-Login.
     """
     def __init__(self, user_doc):
-        self.id         = str(user_doc["_id"])
-        self.donor_id   = user_doc.get("donor_id")
-        self.full_name  = user_doc.get("full_name")
-        self.email      = user_doc.get("email")
-        self.phone      = user_doc.get("phone")
-        self.role       = user_doc.get("role")
-        self.blood_group= user_doc.get("blood_group")
-        self.city       = user_doc.get("city")
-        self.hospital_id= user_doc.get("hospital_id")
+        self.id = str(user_doc["_id"])
+        self.donor_id = user_doc.get("donor_id")
+        self.full_name = user_doc.get("full_name")
+        self.email = user_doc.get("email")
+        self.phone = user_doc.get("phone")
+        self.role = user_doc.get("role")
+        self.blood_group = user_doc.get("blood_group")
+        self.city = user_doc.get("city")
+        self.hospital_id = user_doc.get("hospital_id")
 
-        # ✅ ADD THIS LINE
         self.hospital_name = user_doc.get("hospital_name")
 
         self.is_active_account = user_doc.get("is_active", True)

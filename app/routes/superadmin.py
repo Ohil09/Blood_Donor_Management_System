@@ -12,8 +12,10 @@ from app.services.email_service import EmailService
 
 superadmin_bp = Blueprint("superadmin", __name__, url_prefix="/superadmin")
 
+
 def superadmin_required(f):
     from functools import wraps
+
     @wraps(f)
     def decorated(*args, **kwargs):
         if not current_user.is_authenticated or current_user.role != "superadmin":
@@ -22,9 +24,11 @@ def superadmin_required(f):
         return f(*args, **kwargs)
     return decorated
 
+
 def _generate_password(length=10):
     alphabet = string.ascii_uppercase + string.digits
     return "".join(secrets.choice(alphabet) for _ in range(length))
+
 
 @superadmin_bp.route("/dashboard", methods=["GET", "POST"])
 @login_required
