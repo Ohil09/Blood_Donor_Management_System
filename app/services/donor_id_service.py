@@ -2,6 +2,7 @@ import random
 import string
 from app import db
 
+
 def generate_donor_id():
     """
     Generates a unique alphanumeric Donor ID in format: BDMS-XXXXXX

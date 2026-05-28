@@ -2,6 +2,8 @@ from datetime import datetime, timezone, date
 from bson import ObjectId
 
 from app.models.inventory import Inventory
+
+
 class ExchangeService:
     @staticmethod
     def _now():

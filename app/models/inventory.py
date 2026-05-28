@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from bson import ObjectId
 
+
 class Inventory:
     """Represents blood inventory for a hospital"""
     

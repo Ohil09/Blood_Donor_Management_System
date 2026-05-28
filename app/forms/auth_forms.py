@@ -8,20 +8,6 @@ from wtforms.validators import (
     EqualTo, NumberRange
 )
 
-# BLOOD_GROUPS = [
-#     ("", "-- Select Blood Group --"),
-#     ("A+", "A+"), ("A-", "A-"),
-#     ("B+", "B+"), ("B-", "B-"),
-#     ("AB+", "AB+"), ("AB-", "AB-"),
-#     ("O+", "O+"), ("O-", "O-"),
-# ]
-
-# GENDER_CHOICES = [
-#     ("", "-- Select Gender --"),
-#     ("Male", "Male"),
-#     ("Female", "Female"),
-#     ("Other", "Other"),
-# ]
 
 class RegistrationForm(FlaskForm):
     full_name = StringField("Full Name",
@@ -51,12 +37,14 @@ class RegistrationForm(FlaskForm):
                     validators=[EqualTo("password")])
     submit = SubmitField("Register as Donor")
 
+
 class LoginForm(FlaskForm):
-    login_id  = StringField("Donor ID / Hospital ID / Email",
-                  validators=[DataRequired()])
-    password  = PasswordField("Password",
-                  validators=[DataRequired()])
-    submit    = SubmitField("Login")
+    login_id = StringField("Donor ID / Hospital ID / Email",
+                           validators=[DataRequired()])
+    password = PasswordField("Password",
+                             validators=[DataRequired()])
+    submit = SubmitField("Login")
+
 
 class EditProfileForm(FlaskForm):
     full_name = StringField("Full Name",

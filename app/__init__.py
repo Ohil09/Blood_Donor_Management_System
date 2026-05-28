@@ -1,10 +1,12 @@
-from flask import Flask
+from flask import Flask, redirect, url_for
+from flask_login import current_user
 from pymongo import MongoClient
 from app.config import config
 from app.extensions import login_manager, mail, csrf
 
 # Global db reference — imported by models and routes
 db = None
+
 
 def create_app(config_name="development"):
     app = Flask(__name__)
@@ -32,31 +34,35 @@ def create_app(config_name="development"):
     mail.init_app(app)
     csrf.init_app(app)
 
-    # ── Register Blueprints ──────────────────────────────
-    # (Uncomment each one as you build them)
-    # Blueprints
-    # Blueprints
+    # ── Home Route ───────────────────────────────────────
+    @app.route("/")
+    def index():
+        """Home page that redirects based on authentication status."""
+        if current_user.is_authenticated:
+            # Redirect authenticated users to their dashboard
+            if current_user.role == "donor":
+                return redirect(url_for("donor.dashboard"))
+            elif current_user.role in ["admin", "hospital_admin"]:
+                return redirect(url_for("admin.dashboard"))
+            elif current_user.role == "superadmin":
+                return redirect(url_for("superadmin.dashboard"))
 
+        # Redirect unauthenticated users to landing page
+        return redirect(url_for("auth.landing"))
+
+    # ── Register Blueprints ──────────────────────────────
     from app.routes.auth import auth_bp
     from app.routes.donor import donor_bp
     from app.routes.admin import admin_bp
     from app.routes.superadmin import superadmin_bp
     from app.services.donation_service import DonationService
     from app.services.exchange_service import ExchangeService
+
     DonationService.ensure_indexes(db)
     ExchangeService.ensure_indexes(db)
     app.register_blueprint(auth_bp)
     app.register_blueprint(donor_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(superadmin_bp)
-
-    # from app.routes.donor      import donor_bp
-    # from app.routes.admin      import admin_bp
-    # from app.routes.superadmin import superadmin_bp
-    # from app.routes.api        import api_bp
-    # app.register_blueprint(donor_bp)
-    # app.register_blueprint(admin_bp)
-    # app.register_blueprint(superadmin_bp)
-    # app.register_blueprint(api_bp)
 
     return app

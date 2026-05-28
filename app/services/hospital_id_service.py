@@ -2,6 +2,7 @@ import random
 import string
 from app import db
 
+
 def generate_hospital_id(prefix="HOSP", length=4):
     """
     Generates a unique Hospital ID like HOSP-1234.

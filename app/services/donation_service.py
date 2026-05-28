@@ -31,7 +31,7 @@ class DonationService:
         next_eligible = DonationService.calculate_next_eligible_date(now, donation_type)
         donation_doc = {
             "donor_id": donor_doc["donor_id"],
-            #"donor_user_id": str(donor_doc["_id"]),
+            # "donor_user_id": str(donor_doc["_id"]),
             "donor_user_id": ObjectId(donor_doc["_id"]),
             "donor_name": donor_doc.get("full_name"),
             "blood_group": donor_doc.get("blood_group"),

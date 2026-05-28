@@ -21,6 +21,7 @@ admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 # ── Check role is admin ──────────────────────────────────────
 def admin_required(f):
     from functools import wraps
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or current_user.role not in ["admin", "hospital_admin", "superadmin"]:
@@ -265,6 +266,7 @@ def donors():
     
     return render_template("admin/donors.html", **context)
 
+
 # ── Unassigned Donors ────────────────────────────────────────
 @admin_bp.route("/unassigned-donors")
 @login_required
@@ -320,6 +322,7 @@ def assign_donor(donor_id):
         flash(message, "danger")
     
     return redirect(url_for("admin.unassigned_donors"))
+
 
 # ── Inter-Hospital Exchange Requests ────────────────────────────────────────
 @admin_bp.route("/exchange/requests")
@@ -566,6 +569,7 @@ def reassign_donor(donor_id):
     
     return redirect(url_for("admin.donors"))
 
+
 # ── Confirm Donation (Module 4) ─────────────────────────────────────────
 @admin_bp.route("/donations/confirm", methods=["GET", "POST"])
 @login_required
@@ -653,6 +657,7 @@ def change_password():
         return redirect(url_for("auth.login"))
     
     return render_template("admin/change_password.html", form=form)
+
 
 # -- Donor Donation Requests --
 @admin_bp.route('/donor-requests')

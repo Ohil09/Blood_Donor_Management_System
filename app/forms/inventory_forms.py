@@ -1,6 +1,7 @@
 from flask_wtf import FlaskForm
 from wtforms import BooleanField, StringField, IntegerField, SelectField, SubmitField
-from wtforms.validators import DataRequired, NumberRange, ValidationError
+from wtforms.validators import DataRequired, NumberRange
+
 
 class AddStockForm(FlaskForm):
     """Form to add blood stock"""
