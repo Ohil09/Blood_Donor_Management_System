@@ -210,4 +210,5 @@ __marimo__/
 # Secret environment file - NEVER commit this
 .env
 
+#databse backups
 backups
