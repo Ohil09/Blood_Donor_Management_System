@@ -32,10 +32,7 @@ BDMS directly addresses this by providing:
 - Cross-hospital blood exchange requests
 
 ### Super Admin
-- System-wide dashboard with statistics across all hospitals
 - Register and manage hospitals (create, verify, delete with cascade cleanup)
-- Full CRUD control over all system entities
-- Monitor inter-hospital exchange network
 
 ### System
 - Automatic donor eligibility enforcement (56 days whole blood · 7 days platelets · 28 days plasma)
