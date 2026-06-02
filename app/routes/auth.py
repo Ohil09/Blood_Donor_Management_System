@@ -69,7 +69,7 @@ def register():
             "city": form.city.data,
             "password_hash": password_hash,
             "role": "donor",
-            "hospital_id": None,  # ✅ NOT ASSIGNED YET
+            "hospital_id": None,  #  NOT ASSIGNED YET
             "created_at": datetime.now(timezone.utc),
             "is_active": True,
             "last_donation_date": None,
