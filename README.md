@@ -67,6 +67,8 @@ source venv/bin/activate
 # 3. Install dependencies
 pip install -r requirements.txt
 
+pip install -r requirements-dev.txt
+
 # 4. Set up environment variables
 cp .env.example .env
 

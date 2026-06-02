@@ -20,9 +20,6 @@ Flask-WTF==1.2.1
 WTForms==3.1.2
 email-validator==2.1.1
 
-# ── Templating ────────────────────────��───────────────────────
-Jinja2==3.1.4
-
 # ── Notifications ─────────────────────────────────────────────
 Flask-Mail==0.10.0
 twilio==9.2.3
@@ -35,3 +32,6 @@ python-dateutil==2.9.0
 
 # ── Security ──────────────────────────────────────────────────
 itsdangerous==2.2.0
+
+# ── Production Server ─────────────────────────────────────────
+gunicorn==22.0.0
