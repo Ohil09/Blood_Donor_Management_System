@@ -34,6 +34,11 @@ class EmailService:
             True if sent successfully, False otherwise
         """
         try:
+            # Skip email on production (SMTP blocked on free hosting)
+            from flask import current_app
+            if not current_app.debug:
+                logger.info("Email skipped in production (SMTP unavailable)")
+                return False
             subject = f"Welcome to Blood Donor Management System - Your Donor ID: {donor_id}"
             html_body = render_template_string(
                 DONOR_WELCOME_TEMPLATE,
@@ -72,6 +77,10 @@ class EmailService:
             True if sent successfully, False otherwise
         """
         try:
+            from flask import current_app
+            if not current_app.debug:
+                logger.info("Email skipped in production (SMTP unavailable)")
+                return False
             subject = f"Your Hospital Admin Credentials - {hospital_name}"
             html_body = render_template_string(
                 HOSPITAL_CREDENTIALS_TEMPLATE,
