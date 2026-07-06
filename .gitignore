@@ -212,3 +212,6 @@ __marimo__/
 
 #database backups
 backups
+
+# Local setup scripts
+scripts/
