@@ -21,6 +21,7 @@ class Config:
     MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
     MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER")
     MAIL_SENDER_NAME = os.environ.get("MAIL_SENDER_NAME", "Blood Donor Management System")
+    MAIL_TIMEOUT = 10
 
     # Twilio (optional)
     TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID")
