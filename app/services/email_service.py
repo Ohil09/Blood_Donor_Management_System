@@ -12,6 +12,10 @@ logger = logging.getLogger(__name__)
 
 class EmailService:
     """Service for sending emails via Flask-Mail"""
+
+    @staticmethod
+    def _is_mail_enabled():
+        return current_app.config.get("MAIL_ENABLED", True)
     
     @staticmethod
     def _get_formatted_sender():
@@ -33,12 +37,11 @@ class EmailService:
         Returns:
             True if sent successfully, False otherwise
         """
+        if not EmailService._is_mail_enabled():
+            logger.info("Welcome email skipped because MAIL_ENABLED is false")
+            return False
+
         try:
-            # Skip email on production (SMTP blocked on free hosting)
-            from flask import current_app
-            if not current_app.debug:
-                logger.info("Email skipped in production (SMTP unavailable)")
-                return False
             subject = f"Welcome to Blood Donor Management System - Your Donor ID: {donor_id}"
             html_body = render_template_string(
                 DONOR_WELCOME_TEMPLATE,
@@ -76,11 +79,11 @@ class EmailService:
         Returns:
             True if sent successfully, False otherwise
         """
+        if not EmailService._is_mail_enabled():
+            logger.info("Hospital credentials email skipped because MAIL_ENABLED is false")
+            return False
+
         try:
-            from flask import current_app
-            if not current_app.debug:
-                logger.info("Email skipped in production (SMTP unavailable)")
-                return False
             subject = f"Your Hospital Admin Credentials - {hospital_name}"
             html_body = render_template_string(
                 HOSPITAL_CREDENTIALS_TEMPLATE,

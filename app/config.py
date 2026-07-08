@@ -4,6 +4,10 @@ from dotenv import load_dotenv
 load_dotenv()  # Loads .env file into os.environ
 
 
+def _env_bool(name, default=False):
+    return os.environ.get(name, str(default)).strip().lower() in {"1", "true", "yes", "on"}
+
+
 class Config:
     # Flask
     SECRET_KEY = os.environ.get("SECRET_KEY", "fallback-dev-key-change-me")
@@ -16,11 +20,12 @@ class Config:
     # Flask-Mail
     MAIL_SERVER = os.environ.get("MAIL_SERVER", "smtp.gmail.com")
     MAIL_PORT = int(os.environ.get("MAIL_PORT", 587))
-    MAIL_USE_TLS = os.environ.get("MAIL_USE_TLS", "True") == "True"
+    MAIL_USE_TLS = _env_bool("MAIL_USE_TLS", True)
     MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
     MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
     MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER")
     MAIL_SENDER_NAME = os.environ.get("MAIL_SENDER_NAME", "Blood Donor Management System")
+    MAIL_ENABLED = _env_bool("MAIL_ENABLED", True)
     MAIL_TIMEOUT = 10
 
     # Twilio (optional)
