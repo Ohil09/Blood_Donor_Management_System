@@ -94,5 +94,11 @@
       {% endfor %}
     </tbody>
   </table>
+
+  <div class="mt-4 d-flex justify-content-end">
+    <a href="{{ url_for('superadmin.donors') }}" class="btn btn-outline-danger btn-sm">
+      <i class="fa-solid fa-users-slash me-1"></i>Manage Donors
+    </a>
+  </div>
 </div>
 {% endblock %}
