@@ -4,6 +4,8 @@ from werkzeug.security import generate_password_hash
 from datetime import datetime, timezone
 import secrets
 import string
+from bson import ObjectId
+from bson.errors import InvalidId
 
 from app import db
 from app.forms.superadmin_forms import CreateHospitalForm
@@ -100,6 +102,56 @@ def dashboard():
 
     hospitals = list(db.hospitals.find({}).sort("created_at", -1).limit(50))
     return render_template("superadmin/dashboard.html", form=form, generated=generated, hospitals=hospitals)
+
+
+@superadmin_bp.route("/donors")
+@login_required
+@superadmin_required
+def donors():
+    donors = list(
+        db.users.find({"role": "donor"})
+        .sort("created_at", -1)
+        .limit(200)
+    )
+    return render_template("superadmin/donors.html", donors=donors)
+
+
+@superadmin_bp.route("/donors/<donor_user_id>/delete", methods=["POST"])
+@login_required
+@superadmin_required
+def delete_donor(donor_user_id):
+    donor_user_id = (donor_user_id or "").strip()
+    if not donor_user_id:
+        flash("Invalid donor ID.", "danger")
+        return redirect(url_for("superadmin.donors"))
+
+    try:
+        donor_object_id = ObjectId(donor_user_id)
+    except (InvalidId, TypeError):
+        flash("Invalid donor ID.", "danger")
+        return redirect(url_for("superadmin.donors"))
+
+    donor = db.users.find_one({"_id": donor_object_id, "role": "donor"})
+    if not donor:
+        flash("Donor not found.", "warning")
+        return redirect(url_for("superadmin.donors"))
+
+    donor_id = donor.get("donor_id")
+
+    db.users.delete_one({"_id": donor_object_id, "role": "donor"})
+
+    donation_query = {"donor_user_id": donor_object_id}
+    if donor_id:
+        donation_query = {"$or": [{"donor_user_id": donor_object_id}, {"donor_id": donor_id}]}
+    db.donations.delete_many(donation_query)
+
+    request_query = {"donor_user_id": donor_object_id}
+    if donor_id:
+        request_query = {"$or": [{"donor_user_id": donor_object_id}, {"donor_id": donor_id}]}
+    db.donation_requests.delete_many(request_query)
+
+    flash(f"Donor {donor.get('full_name', donor_id or 'account')} deleted successfully.", "success")
+    return redirect(url_for("superadmin.donors"))
 
 
 @superadmin_bp.route("/hospitals/<hospital_id>/delete", methods=["POST"])

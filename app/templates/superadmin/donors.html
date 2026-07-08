@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Manage Donors{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Super Admin — Manage Donors</h3>
+    <a href="{{ url_for('superadmin.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="fa-solid fa-arrow-left me-1"></i>Back
+    </a>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-sm table-striped mb-0">
+          <thead>
+            <tr>
+              <th>Donor ID</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Blood Group</th>
+              <th>City</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for donor in donors %}
+            <tr>
+              <td>{{ donor.donor_id or "N/A" }}</td>
+              <td>{{ donor.full_name or "N/A" }}</td>
+              <td>{{ donor.email or "N/A" }}</td>
+              <td>{{ donor.blood_group or "N/A" }}</td>
+              <td>{{ donor.city or "N/A" }}</td>
+              <td>
+                <form method="POST" action="{{ url_for('superadmin.delete_donor', donor_user_id=donor._id) }}" class="d-inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button
+                    type="submit"
+                    class="btn btn-sm btn-outline-danger"
+                    onclick="return confirm('Delete donor {{ donor.full_name or donor.donor_id }}? This will remove donor requests and donation history for this donor.');"
+                  >
+                    Delete
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="6" class="text-center text-muted py-3">No donors found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
