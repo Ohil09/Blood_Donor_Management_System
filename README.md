@@ -79,7 +79,7 @@ Open `http://localhost:5000`.
 
 The project is configured for Render with the included `Procfile`:
 
-The project is live at : [click](https://blood-donor-management-system-t6hw.onrender.com)
+The project is live at : https://blood-donor-management-system-t6hw.onrender.com
 
 ```text
 web: gunicorn run:app
