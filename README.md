@@ -1,79 +1,104 @@
-# Blood Donor Management System (BDMS)
+# Blood Donor Management System
 
-> A full-stack web application to digitise, centralise, and streamline blood bank operations — connecting donors, hospitals, and administrators on a single platform.
+> A full-stack blood-bank management platform built as a **BCA academic project** and deployed on **Render**.
+
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-3.0-000000?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?logo=mongodb&logoColor=white)](https://www.mongodb.com/atlas)
+[![Deployed on Render](https://img.shields.io/badge/Deployed%20on-Render-46E3B7?logo=render&logoColor=111111)](https://render.com/)
 
 ## Overview
 
-The Blood Donor Management System (BDMS) is a full-stack, web-based application engineered to replace fragile paper-based blood bank processes with an intelligent, database-driven platform.
+The Blood Donor Management System (BDMS) digitises donor registration, blood inventory, donation requests, and hospital coordination in one secure web application. It replaces fragmented, manual processes with role-based dashboards and traceable workflows.
 
-According to the WHO, approximately 118.5 million blood donations are collected globally each year, yet demand consistently outpaces supply — especially in developing nations. Every two seconds, a patient somewhere requires a blood transfusion.
+## My Role
 
-BDMS directly addresses this by providing:
+**Full-Stack Developer — BCA Project**
 
-- Real-time blood inventory visibility across hospitals
-- Automated donor eligibility tracking (enforcing 56-day inter-donation intervals)
-- Electronic donation request processing
-- Inter-hospital emergency blood exchange
-- A unified admin dashboard for data-driven decision making
+- Designed and developed the application workflow from donor registration to donation fulfilment.
+- Built Flask routes, business services, forms, templates, and MongoDB data models.
+- Implemented authentication, role-based access control, CSRF protection, password hashing, and audit-friendly operations.
+- Added production configuration and deployed the application with Gunicorn on Render.
 
-## Features
+## Key Features
 
-### Donor
-- Self-registration with auto-generated Donor ID (`BDMS-XXXXXX`)
-- Personal dashboard with donation history and eligibility status
-- Profile management (edit personal info, change password)
-- View and track donation requests
+| Role | Capabilities |
+| --- | --- |
+| **Donor** | Register with an auto-generated Donor ID, manage a profile, check eligibility, view history, find hospitals, and submit donation requests. |
+| **Hospital Admin** | Monitor inventory and low-stock alerts, search and assign donors, process requests, record donations, and exchange blood with other hospitals. |
+| **Super Admin** | Register, verify, manage, and remove hospitals and oversee donor administration. |
 
-### Hospital Admin
-- Dashboard with real-time KPIs — total blood units, low-stock alerts, pending requests
-- Donor search by blood group, city, and eligibility
-- Accept / reject / fulfil donation requests with audit trail
-- Manage blood inventory (add stock / deplete stock)
-- Cross-hospital blood exchange requests
+### System capabilities
 
-### Super Admin
-- Register and manage hospitals (create, verify, delete with cascade cleanup)
+- Donor eligibility rules for whole blood, platelets, and plasma
+- Blood inventory additions, depletion, and low-stock thresholds
+- Inter-hospital blood exchange workflow
+- Email notifications and optional Twilio SMS integration
+- Session-based authentication with protected forms and role-based dashboards
+- MongoDB indexes for common donor, hospital, request, and inventory queries
 
-### System
-- Automatic donor eligibility enforcement (56 days whole blood · 7 days platelets · 28 days plasma)
-- Low-stock alerts when blood group inventory falls below threshold
-- Email notifications for registration, requests, and fulfilment
-- Role-based access control (RBAC) with session management
-- Audit logging of all critical operations
-- CSRF protection on all forms
+## Tech Stack
 
-## Getting Started
+- **Backend:** Python, Flask, Flask-Login, Flask-WTF
+- **Database:** MongoDB / MongoDB Atlas with PyMongo
+- **Frontend:** Jinja2 templates, Bootstrap 5, custom CSS, Font Awesome
+- **Notifications:** Flask-Mail, optional Twilio SMS
+- **Deployment:** Gunicorn on Render
+
+## Run Locally
 
 ### Prerequisites
-- Python 3.11+
-- MongoDB 4.x (local or [MongoDB Atlas](https://www.mongodb.com/atlas))
-- Git
 
-### Installation
+- Python 3.11+
+- MongoDB locally or a MongoDB Atlas connection
+
+### Setup
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/your-username/bdms.git
-cd bdms
+git clone https://github.com/Ohil09/Blood_Donor_Management_System.git
+cd Blood_Donor_Management_System
 
-# 2. Create and activate a virtual environment
 python -m venv venv
-
 # Windows
 venv\Scripts\activate
-# macOS / Linux
-source venv/bin/activate
+# macOS/Linux
+# source venv/bin/activate
 
-# 3. Install dependencies
 pip install -r requirements.txt
+```
 
-pip install -r requirements-dev.txt
+Copy `.env.example` to `.env`, configure `SECRET_KEY`, `MONGO_URI`, and `MONGO_DB_NAME`, then start the app:
 
-# 4. Set up environment variables
-cp .env.example .env
-
-# 5. Run the application
+```bash
 python run.py
 ```
 
-The application will be available at `http://localhost:5000`
+Open `http://localhost:5000`.
+
+## Deployment
+
+The project is configured for Render with the included `Procfile`:
+
+```text
+web: gunicorn run:app
+```
+
+Configure the same environment variables in the Render service dashboard. Never commit `.env` or production credentials.
+
+## Project Structure
+
+```text
+app/
+├── models/       # MongoDB document models
+├── routes/       # Auth, donor, hospital admin, and super-admin routes
+├── services/     # Donation, inventory, exchange, email, and ID services
+├── forms/        # WTForms validation and CSRF-protected forms
+└── templates/    # Jinja2 UI templates
+run.py            # Application entry point
+Procfile          # Render/Gunicorn process definition
+```
+
+---
+
+**Academic project:** Bachelor of Computer Applications (BCA)
+**Project:** Blood Donor Management System
