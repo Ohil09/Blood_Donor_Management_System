@@ -41,7 +41,7 @@ The Blood Donor Management System (BDMS) digitises donor registration, blood inv
 
 - **Backend:** Python, Flask, Flask-Login, Flask-WTF
 - **Database:** MongoDB / MongoDB Atlas with PyMongo
-- **Frontend:** Jinja2 templates, Bootstrap 5, custom CSS, Font Awesome
+- **Frontend:** Jinja2 templates, Bootstrap 5, custom CSS,
 - **Notifications:** Flask-Mail, optional Twilio SMS
 - **Deployment:** Gunicorn on Render
 
@@ -79,6 +79,8 @@ Open `http://localhost:5000`.
 
 The project is configured for Render with the included `Procfile`:
 
+The project is live at : [click]https://blood-donor-management-system-t6hw.onrender.com
+
 ```text
 web: gunicorn run:app
 ```
@@ -100,5 +102,4 @@ Procfile          # Render/Gunicorn process definition
 
 ---
 
-**Academic project:** Bachelor of Computer Applications (BCA)
-**Project:** Blood Donor Management System
+
