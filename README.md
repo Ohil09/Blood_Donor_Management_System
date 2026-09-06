@@ -41,8 +41,8 @@ The Blood Donor Management System (BDMS) digitises donor registration, blood inv
 
 - **Backend:** Python, Flask, Flask-Login, Flask-WTF
 - **Database:** MongoDB / MongoDB Atlas with PyMongo
-- **Frontend:** Jinja2 templates, Bootstrap 5, custom CSS,
-- **Notifications:** Flask-Mail, optional Twilio SMS
+- **Frontend:** Jinja2 templates, Bootstrap 5, Tailwind CSS,
+- **Notifications:** Flask-Mail, optional Twilio SMS(*Feature taken out for hosting purposes)
 - **Deployment:** Gunicorn on Render
 
 ## Run Locally
