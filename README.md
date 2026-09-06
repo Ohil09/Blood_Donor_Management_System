@@ -81,11 +81,6 @@ The project is configured for Render with the included `Procfile`:
 
 The project is live at : https://blood-donor-management-system-t6hw.onrender.com
 
-```text
-web: gunicorn run:app
-```
-
-Configure the same environment variables in the Render service dashboard. Never commit `.env` or production credentials.
 
 ## Project Structure
 
